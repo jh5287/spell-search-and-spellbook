@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   MAX_BACKUP_BYTES,
   countNewSpells,
   downloadBackup,
+  eraseEverything,
   importBackup,
   parseBackup,
   type BackupContents,
@@ -26,8 +27,15 @@ interface Message {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-export default function BackupPanel() {
+interface PanelProps {
+  /** Called after a hard reset so the rest of the app can drop anything it was holding. */
+  onReset?: () => void;
+}
+
+export default function BackupPanel({ onReset }: PanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const [confirmingErase, setConfirmingErase] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
 
@@ -53,6 +61,19 @@ export default function BackupPanel() {
       exportedAt: result.exportedAt,
       newSpells: countNewSpells(result.contents),
     });
+  }
+
+  // land on the safe choice so a stray Enter or Space can't erase anything
+  useEffect(() => {
+    if (confirmingErase) cancelRef.current?.focus();
+  }, [confirmingErase]);
+
+  function erase() {
+    eraseEverything();
+    setPending(null);
+    setConfirmingErase(false);
+    setMessage({ text: "Everything was erased. You're starting with a blank slate." });
+    onReset?.();
   }
 
   function runImport(mode: ImportMode) {
@@ -125,6 +146,35 @@ export default function BackupPanel() {
         <p role="status" className={message?.error ? styles.error : styles.status}>
           {message?.text}
         </p>
+
+        <div className={styles.danger}>
+          <h3 className={styles.dangerHeading}>Start over</h3>
+          <p className={styles.text}>
+            Permanently deletes your spell book, custom spells, slot tracker and settings from this browser. Export a
+            backup first if you might want them back.
+          </p>
+          {confirmingErase ? (
+            <div className={styles.confirm}>
+              <p className={styles.text}>
+                <strong>Erase everything? This can&apos;t be undone.</strong>
+              </p>
+              <div className={styles.actions}>
+                <button className={`btn ${styles.dangerBtn}`} onClick={erase}>
+                  Yes, erase everything
+                </button>
+                <button ref={cancelRef} className="btn" onClick={() => setConfirmingErase(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.actions}>
+              <button className={`btn ${styles.dangerOutline}`} onClick={() => setConfirmingErase(true)}>
+                Erase everything…
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </details>
   );

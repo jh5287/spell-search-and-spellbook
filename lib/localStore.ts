@@ -50,7 +50,19 @@ export function createLocalStore<T>(key: string, initial: T, isValid: (v: unknow
     listeners.forEach((l) => l());
   }
 
-  return { getSnapshot, getServerSnapshot: () => initial, subscribe, set };
+  /** Forgets the saved value and goes back to `initial`; other open tabs follow via the `storage` event. */
+  function clear() {
+    value = initial;
+    loaded = true;
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // storage unavailable: there was nothing saved to remove
+    }
+    listeners.forEach((l) => l());
+  }
+
+  return { getSnapshot, getServerSnapshot: () => initial, subscribe, set, clear };
 }
 
 export type LocalStore<T> = ReturnType<typeof createLocalStore<T>>;
