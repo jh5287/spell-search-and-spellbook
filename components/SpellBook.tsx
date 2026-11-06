@@ -20,13 +20,17 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { BOOK_VIEWS, bookView, groupSpells, type BookView } from "@/lib/spellbook";
 import { useLocalStore } from "@/lib/localStore";
+import type { CastOption, Tracker } from "@/lib/slots";
 import type { Spell } from "@/lib/spells";
+import CastControl from "./CastControl";
 import { GripIcon } from "./icons";
 import SpellCard from "./SpellCard";
 import styles from "./SpellBook.module.css";
 
 interface Props {
   spells: Spell[];
+  tracker: Tracker;
+  onCast: (spell: Spell, option: CastOption) => void;
   onReorder: (groupKey: string, activeId: string, overId: string) => void;
   onRemove: (index: string) => void;
   onEdit: (spell: Spell) => void;
@@ -36,11 +40,13 @@ interface ItemProps {
   spell: Spell;
   view: BookView;
   arranging: boolean;
+  tracker: Tracker;
+  onCast: (spell: Spell, option: CastOption) => void;
   onRemove: (index: string) => void;
   onEdit: (spell: Spell) => void;
 }
 
-function SortableSpell({ spell, view, arranging, onRemove, onEdit }: ItemProps) {
+function SortableSpell({ spell, view, arranging, tracker, onCast, onRemove, onEdit }: ItemProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: spell.index, disabled: !arranging });
 
@@ -69,6 +75,7 @@ function SortableSpell({ spell, view, arranging, onRemove, onEdit }: ItemProps) 
         }
         actions={
           <>
+            <CastControl spell={spell} tracker={tracker} onCast={onCast} />
             {spell.custom && (
               <button className="btn" aria-label={`Edit ${spell.name}`} onClick={() => onEdit(spell)}>
                 Edit
@@ -90,7 +97,7 @@ function SortableSpell({ spell, view, arranging, onRemove, onEdit }: ItemProps) 
   );
 }
 
-export default function SpellBook({ spells, onReorder, onRemove, onEdit }: Props) {
+export default function SpellBook({ spells, tracker, onCast, onReorder, onRemove, onEdit }: Props) {
   const [view, setView] = useLocalStore(bookView);
   const [arranging, setArranging] = useState(false);
   const sensors = useSensors(
@@ -156,6 +163,8 @@ export default function SpellBook({ spells, onReorder, onRemove, onEdit }: Props
                     spell={spell}
                     view={view}
                     arranging={arranging}
+                    tracker={tracker}
+                    onCast={onCast}
                     onRemove={onRemove}
                     onEdit={onEdit}
                   />

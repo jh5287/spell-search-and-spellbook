@@ -36,6 +36,15 @@ export function PlusIcon() {
   );
 }
 
+export function SlotsIcon() {
+  return (
+    <svg {...base}>
+      <path d="M12 3 4 9l8 12 8-12-8-6Z" />
+      <path d="M4 9h16M12 3l-3 6 3 12 3-12-3-6Z" />
+    </svg>
+  );
+}
+
 export function GripIcon() {
   return (
     <svg {...base} width={18} height={18} fill="currentColor" stroke="none">
