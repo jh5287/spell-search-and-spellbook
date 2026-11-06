@@ -17,19 +17,18 @@ export interface BackupContents {
 export type ParseResult = { ok: true; contents: BackupContents; exportedAt?: string } | { ok: false; error: string };
 export type ImportMode = "merge" | "replace";
 
+/** Everything saved in this browser right now. */
+export function snapshotContents(): Required<BackupContents> {
+  return { spells: spellBook.getSnapshot(), view: bookView.getSnapshot(), tracker: slotTracker.getSnapshot() };
+}
+
+/** The JSON-ready object for a backup file, or for the copy kept in a signed-in account. */
+export function backupData(contents: BackupContents, exportedAt = new Date().toISOString()) {
+  return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt, ...contents };
+}
+
 export function createBackup(): string {
-  return JSON.stringify(
-    {
-      app: BACKUP_APP,
-      version: BACKUP_VERSION,
-      exportedAt: new Date().toISOString(),
-      spells: spellBook.getSnapshot(),
-      view: bookView.getSnapshot(),
-      tracker: slotTracker.getSnapshot(),
-    },
-    null,
-    2,
-  );
+  return JSON.stringify(backupData(snapshotContents()), null, 2);
 }
 
 export function backupFilename(date = new Date()): string {
@@ -55,7 +54,11 @@ export function parseBackup(text: string): ParseResult {
   } catch {
     return { ok: false, error: "That file isn't valid JSON. Choose a backup exported from this app." };
   }
+  return parseBackupData(data);
+}
 
+/** Checks parsed JSON from a backup file or an account and keeps only the parts that are valid. */
+export function parseBackupData(data: unknown): ParseResult {
   const file = data as Record<string, unknown> | null;
   if (typeof file !== "object" || file === null || file.app !== BACKUP_APP) {
     return { ok: false, error: "That doesn't look like a Spell Book backup." };

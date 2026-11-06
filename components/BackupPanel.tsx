@@ -11,6 +11,7 @@ import {
   type BackupContents,
   type ImportMode,
 } from "@/lib/backup";
+import { useAccount } from "./AccountProvider";
 import styles from "./BackupPanel.module.css";
 
 interface Pending {
@@ -36,6 +37,7 @@ export default function BackupPanel({ onReset }: PanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [confirmingErase, setConfirmingErase] = useState(false);
+  const { user } = useAccount();
   const [pending, setPending] = useState<Pending | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
 
@@ -150,8 +152,9 @@ export default function BackupPanel({ onReset }: PanelProps) {
         <div className={styles.danger}>
           <h3 className={styles.dangerHeading}>Start over</h3>
           <p className={styles.text}>
-            Permanently deletes your spell book, custom spells, slot tracker and settings from this browser. Export a
-            backup first if you might want them back.
+            Permanently deletes your spell book, custom spells, slot tracker and settings
+            {user ? " from this browser and from your account (it saves automatically, so the account copy is erased too)" : " from this browser"}.
+            Export a backup first if you might want them back.
           </p>
           {confirmingErase ? (
             <div className={styles.confirm}>

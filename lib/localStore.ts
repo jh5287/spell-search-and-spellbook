@@ -42,6 +42,7 @@ export function createLocalStore<T>(key: string, initial: T, isValid: (v: unknow
 
   function set(next: T | ((prev: T) => T)) {
     value = typeof next === "function" ? (next as (prev: T) => T)(getSnapshot()) : next;
+    loaded = true; // what was just set is current, even if it can't be written to storage
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch {

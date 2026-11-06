@@ -15,11 +15,13 @@ import {
 import { addToBook, removeFromBook, reorderWithinGroup, replaceInBook, spellBook } from "@/lib/spellbook";
 import type { Spell } from "@/lib/spells";
 import CustomSpellForm from "./CustomSpellForm";
+import AccountMenu from "./AccountMenu";
 import BackupPanel from "./BackupPanel";
 import { BookIcon, PlusIcon, SearchIcon, SlotsIcon } from "./icons";
 import SlotTracker from "./SlotTracker";
 import SpellBook from "./SpellBook";
 import SpellSearch from "./SpellSearch";
+import SyncConflictDialog from "./SyncConflictDialog";
 import UseBanner, { type BannerMessage } from "./UseBanner";
 import styles from "./SpellApp.module.css";
 
@@ -96,6 +98,7 @@ export default function SpellApp() {
             </button>
           ))}
         </nav>
+        <AccountMenu />
       </header>
 
       {/* search and create stay mounted while hidden so typed text and the spell list aren't lost */}
@@ -143,6 +146,7 @@ export default function SpellApp() {
           setMode("search");
         }}
       />
+      <SyncConflictDialog />
       <UseBanner banner={banner} onUndo={undoBanner} onDismiss={dismissBanner} />
     </main>
   );
