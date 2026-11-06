@@ -99,3 +99,10 @@ export function importBackup({ spells, view, tracker }: BackupContents, mode: Im
   if (spells) spellBook.set((prev) => spells.reduce(addToBook, prev));
   if (tracker && !hasTracker(slotTracker.getSnapshot())) slotTracker.set(tracker);
 }
+
+/** Hard reset: wipes the spell book, display style and slot tracker, leaving a blank slate. */
+export function eraseEverything() {
+  spellBook.clear();
+  bookView.clear();
+  slotTracker.clear();
+}

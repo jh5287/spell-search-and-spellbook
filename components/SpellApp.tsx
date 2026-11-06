@@ -136,7 +136,13 @@ export default function SpellApp() {
         />
       )}
       {mode === "slots" && <SlotTracker />}
-      <BackupPanel />
+      <BackupPanel
+        onReset={() => {
+          setEditing(null);
+          setBanner(null);
+          setMode("search");
+        }}
+      />
       <UseBanner banner={banner} onUndo={undoBanner} onDismiss={dismissBanner} />
     </main>
   );
