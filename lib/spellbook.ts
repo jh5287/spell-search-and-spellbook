@@ -24,18 +24,13 @@ function isSpell(v: unknown): v is Spell {
   );
 }
 
-/** Saved spells, in the user's order (new spells go to the end of their level). */
-export const spellBook = createLocalStore<Spell[]>(
-  "spellbook:spells",
-  [],
-  (v): v is Spell[] => Array.isArray(v) && v.every(isSpell),
-);
+export const isSpellList = (v: unknown): v is Spell[] => Array.isArray(v) && v.every(isSpell);
+export const isBookView = (v: unknown): v is BookView => BOOK_VIEWS.some((o) => o.value === v);
 
-export const bookView = createLocalStore<BookView>(
-  "spellbook:view",
-  "full",
-  (v): v is BookView => BOOK_VIEWS.some((o) => o.value === v),
-);
+/** Saved spells, in the user's order (new spells go to the end of their level). */
+export const spellBook = createLocalStore<Spell[]>("spellbook:spells", [], isSpellList);
+
+export const bookView = createLocalStore<BookView>("spellbook:view", "full", isBookView);
 
 export function addToBook(spells: Spell[], spell: Spell): Spell[] {
   return spells.some((s) => s.index === spell.index) ? spells : [...spells, spell];

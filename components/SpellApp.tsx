@@ -1,32 +1,69 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useLocalStore } from "@/lib/localStore";
+import {
+  newCastId,
+  recordCast,
+  slotLabel,
+  slotTracker,
+  targetRow,
+  undoCast,
+  type Cast,
+  type CastOption,
+} from "@/lib/slots";
 import { addToBook, removeFromBook, reorderWithinGroup, replaceInBook, spellBook } from "@/lib/spellbook";
 import type { Spell } from "@/lib/spells";
 import CustomSpellForm from "./CustomSpellForm";
-import { BookIcon, PlusIcon, SearchIcon } from "./icons";
+import BackupPanel from "./BackupPanel";
+import { BookIcon, PlusIcon, SearchIcon, SlotsIcon } from "./icons";
+import SlotTracker from "./SlotTracker";
 import SpellBook from "./SpellBook";
 import SpellSearch from "./SpellSearch";
+import UseBanner, { type BannerMessage } from "./UseBanner";
 import styles from "./SpellApp.module.css";
 
-type Mode = "search" | "create" | "book";
+type Mode = "search" | "create" | "book" | "slots";
 
 const TITLES: Record<Mode, string> = {
   search: "Spell Lookup",
   create: "Create Your Own",
   book: "Spell Book",
+  slots: "Spell Slots",
 };
 
 export default function SpellApp() {
   const [mode, setMode] = useState<Mode>("search");
   const [saved, setSaved] = useLocalStore(spellBook);
+  const [tracker, setTracker] = useLocalStore(slotTracker);
   const savedIds = useMemo(() => new Set(saved.map((s) => s.index)), [saved]);
 
   // the custom entry currently being edited in the Create tab, if any
   const [editing, setEditing] = useState<Spell | null>(null);
+  const [banner, setBanner] = useState<BannerMessage | null>(null);
+  const dismissBanner = useCallback(() => setBanner(null), []);
 
   const addSpell = (s: Spell) => setSaved((prev) => addToBook(prev, s));
+
+  /** Spends a slot for the spell, notes which spell it went to, and offers an undo. */
+  function castSpell(spell: Spell, option: CastOption) {
+    const row = targetRow(tracker, option.target);
+    if (!row || row.used >= row.max) return;
+
+    const cast: Cast = { id: newCastId(), name: spell.name, level: spell.level };
+    setTracker((prev) => recordCast(prev, option.target, cast));
+    setBanner({
+      id: cast.id,
+      undoable: true,
+      text: `Used ${spell.name}: spent a ${slotLabel(option.target, option.level)}${option.level > spell.level ? " (upcast)" : ""}. ${row.max - row.used - 1} left.`,
+    });
+  }
+
+  function undoBanner() {
+    if (!banner) return;
+    setTracker((prev) => undoCast(prev, banner.id));
+    setBanner({ id: `undo-${banner.id}`, undoable: false, text: "Undone: the spell slot is back." });
+  }
 
   function finishEditing() {
     setEditing(null);
@@ -37,6 +74,7 @@ export default function SpellApp() {
     { mode: "search", label: "Search", icon: <SearchIcon /> },
     { mode: "create", label: "Create", icon: <PlusIcon /> },
     { mode: "book", label: "Book", icon: <BookIcon />, badge: saved.length },
+    { mode: "slots", label: "Slots", icon: <SlotsIcon /> },
   ];
 
   return (
@@ -85,6 +123,8 @@ export default function SpellApp() {
       {mode === "book" && (
         <SpellBook
           spells={saved}
+          tracker={tracker}
+          onCast={castSpell}
           onReorder={(key, activeId, overId) =>
             setSaved((prev) => reorderWithinGroup(prev, key, activeId, overId))
           }
@@ -95,6 +135,9 @@ export default function SpellApp() {
           }}
         />
       )}
+      {mode === "slots" && <SlotTracker />}
+      <BackupPanel />
+      <UseBanner banner={banner} onUndo={undoBanner} onDismiss={dismissBanner} />
     </main>
   );
 }
