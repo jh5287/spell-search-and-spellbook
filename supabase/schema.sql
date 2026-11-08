@@ -11,6 +11,12 @@ create table if not exists public.user_data (
   constraint user_data_size check (octet_length(data::text) <= 2000000)
 );
 
+-- Lets signed-in users reach the table through the API at all. Some Supabase projects don't do this automatically
+-- for new tables; without it saving fails with "permission denied". The policies below still limit each person
+-- to their own row.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.user_data to authenticated;
+
 -- Row-level security is what keeps people out of each other's data. The anon key in the browser is public,
 -- so without these policies anyone could read every row.
 alter table public.user_data enable row level security;

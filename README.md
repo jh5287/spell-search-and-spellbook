@@ -30,3 +30,19 @@ When the two settings are missing the account button simply doesn't appear and t
 
 - No "forgot password" flow yet. It needs Supabase's email sending configured; custom SMTP or magic links are the natural next step.
 - There is no in-app account deletion. Delete users in the Supabase dashboard (*Authentication → Users*), which also removes their saved data.
+
+### Troubleshooting: "Couldn't save"
+
+Open the account panel (click the status chip, or **Sign in**) and press **Test connection**. It checks each step a save depends on, says which one fails and how to fix it, and has a **Copy results** button. The panel also shows the exact error Supabase returned.
+
+If you can't use that yet, open the browser's DevTools → Network tab, filter by `user_data`, click the failing request and read its Response:
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| `PGRST205` / "Could not find the table" (404) | The table doesn't exist | Run `supabase/schema.sql` in the SQL Editor |
+| `42501` / "permission denied" or "row-level security" (401/403) | Access rules or permissions are missing | Run `supabase/schema.sql` again |
+| "Invalid API key" (401) | Wrong or stale `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Re-copy it from Project Settings → API, then redeploy |
+| Request fails with no status, or "Failed to fetch" | Wrong `NEXT_PUBLIC_SUPABASE_URL`, paused project, or blocked by an ad blocker | Check the URL; open the Supabase dashboard to wake a paused project |
+| No `user_data` request at all | The settings weren't built in | Add both variables in Vercel, then **redeploy** |
+
+Never put the `service_role` / secret key in `NEXT_PUBLIC_` settings: everything with that prefix is visible to every visitor.
