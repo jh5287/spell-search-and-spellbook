@@ -483,6 +483,17 @@ export const CLASSES: ClassRules[] = [
         name: "Great Old One Patron",
         features: [once("Clairvoyant Combatant", "short", 6, "Restore by expending a Pact Magic slot.")],
       },
+      // Not in the Player's Handbook: the Vestige Patron is third-party 2024-rules content (dnd2024.wikidot.com).
+      {
+        id: "vestige",
+        name: "Vestige Patron",
+        features: [
+          { ...once("Divine Power", "long", 3, "The vestige's Bonus Action, by type."), to: 5 },
+          once("Divine Power", "short", 6, "Also back when you use Magical Cunning."),
+          once("Vestige Recovery", "long", 10, "Reaction: expend a Pact Magic slot to restore the vestige to full HP."),
+          once("Semblance of Life", "long", 14, "Turn the vestige into a spirit for 1 hour."),
+        ],
+      },
     ],
   },
   {

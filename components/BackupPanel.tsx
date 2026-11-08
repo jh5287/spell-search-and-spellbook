@@ -98,87 +98,84 @@ export default function BackupPanel({ onReset }: PanelProps) {
   const exportedOn = exportedAt && !Number.isNaN(Date.parse(exportedAt)) ? new Date(exportedAt).toLocaleDateString() : null;
 
   return (
-    <details className={styles.panel}>
-      <summary className={styles.summary}>Backup &amp; restore</summary>
-      <div className={styles.body}>
-        <p className={styles.text}>
-          Your spell book and slot tracker are saved in this browser. Export a file to keep a copy, or to move them to
-          another browser or device.
-        </p>
-        <div className={styles.actions}>
-          <button className="btn" onClick={downloadBackup}>
-            Export backup
-          </button>
-          <button className="btn" onClick={() => inputRef.current?.click()}>
-            Import backup…
-          </button>
-          <input ref={inputRef} type="file" accept="application/json,.json" hidden onChange={handleFile} />
-        </div>
+    <div className={styles.body}>
+      <p className={styles.text}>
+        Your spell book and slot tracker are saved in this browser. Export a file to keep a copy, or to move them to
+        another browser or device.
+      </p>
+      <div className={styles.actions}>
+        <button className="btn" onClick={downloadBackup}>
+          Export backup
+        </button>
+        <button className="btn" onClick={() => inputRef.current?.click()}>
+          Import backup…
+        </button>
+        <input ref={inputRef} type="file" accept="application/json,.json" hidden onChange={handleFile} />
+      </div>
 
-        {pending && contents && (
-          <div className={styles.preview}>
+      {pending && contents && (
+        <div className={styles.preview}>
+          <p className={styles.text}>
+            <strong>{pending.fileName}</strong>
+            {exportedOn && ` (exported ${exportedOn})`} contains{" "}
+            {[
+              contents.spells && `${plural(contents.spells.length, "spell")} (${pending.newSpells} not in your book yet)`,
+              contents.tracker && "a slot tracker",
+            ]
+              .filter(Boolean)
+              .join(" and ")}
+            .
+          </p>
+          <div className={styles.actions}>
+            <button className="btn btn-primary" onClick={() => runImport("merge")}>
+              Add to my book
+            </button>
+            <button className="btn" onClick={() => runImport("replace")}>
+              Replace what I have
+            </button>
+            <button className="btn" onClick={() => setPending(null)}>
+              Cancel
+            </button>
+          </div>
+          <p className={styles.hint}>
+            Adding keeps your current spells and slot tracker (a tracker is only brought in if you don&apos;t have one).
+          </p>
+        </div>
+      )}
+
+      <p role="status" className={message?.error ? styles.error : styles.status}>
+        {message?.text}
+      </p>
+
+      <div className={styles.danger}>
+        <h3 className={styles.dangerHeading}>Start over</h3>
+        <p className={styles.text}>
+          Permanently deletes your spell book, custom spells, slot tracker and settings
+          {user ? " from this browser and from your account (it saves automatically, so the account copy is erased too)" : " from this browser"}.
+          Export a backup first if you might want them back.
+        </p>
+        {confirmingErase ? (
+          <div className={styles.confirm}>
             <p className={styles.text}>
-              <strong>{pending.fileName}</strong>
-              {exportedOn && ` (exported ${exportedOn})`} contains{" "}
-              {[
-                contents.spells && `${plural(contents.spells.length, "spell")} (${pending.newSpells} not in your book yet)`,
-                contents.tracker && "a slot tracker",
-              ]
-                .filter(Boolean)
-                .join(" and ")}
-              .
+              <strong>Erase everything? This can&apos;t be undone.</strong>
             </p>
             <div className={styles.actions}>
-              <button className="btn btn-primary" onClick={() => runImport("merge")}>
-                Add to my book
+              <button className={`btn ${styles.dangerBtn}`} onClick={erase}>
+                Yes, erase everything
               </button>
-              <button className="btn" onClick={() => runImport("replace")}>
-                Replace what I have
-              </button>
-              <button className="btn" onClick={() => setPending(null)}>
+              <button ref={cancelRef} className="btn" onClick={() => setConfirmingErase(false)}>
                 Cancel
               </button>
             </div>
-            <p className={styles.hint}>
-              Adding keeps your current spells and slot tracker (a tracker is only brought in if you don&apos;t have one).
-            </p>
+          </div>
+        ) : (
+          <div className={styles.actions}>
+            <button className={`btn ${styles.dangerOutline}`} onClick={() => setConfirmingErase(true)}>
+              Erase everything…
+            </button>
           </div>
         )}
-
-        <p role="status" className={message?.error ? styles.error : styles.status}>
-          {message?.text}
-        </p>
-
-        <div className={styles.danger}>
-          <h3 className={styles.dangerHeading}>Start over</h3>
-          <p className={styles.text}>
-            Permanently deletes your spell book, custom spells, slot tracker and settings
-            {user ? " from this browser and from your account (it saves automatically, so the account copy is erased too)" : " from this browser"}.
-            Export a backup first if you might want them back.
-          </p>
-          {confirmingErase ? (
-            <div className={styles.confirm}>
-              <p className={styles.text}>
-                <strong>Erase everything? This can&apos;t be undone.</strong>
-              </p>
-              <div className={styles.actions}>
-                <button className={`btn ${styles.dangerBtn}`} onClick={erase}>
-                  Yes, erase everything
-                </button>
-                <button ref={cancelRef} className="btn" onClick={() => setConfirmingErase(false)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className={styles.actions}>
-              <button className={`btn ${styles.dangerOutline}`} onClick={() => setConfirmingErase(true)}>
-                Erase everything…
-              </button>
-            </div>
-          )}
-        </div>
       </div>
-    </details>
+    </div>
   );
 }
