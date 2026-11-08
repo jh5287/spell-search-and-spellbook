@@ -183,14 +183,19 @@ export function createSyncEngine(api: CloudApi, options: SyncOptions = {}) {
 
   function fail(e: unknown) {
     const kind = e instanceof CloudError ? e.kind : "other";
+    const detail = e instanceof Error ? e.message : String(e);
     if (kind === "auth") {
       setState({ status: "error", message: "Your sign-in has expired. Sign in again to keep saving." });
-    } else {
-      const offline = kind === "network" || (typeof navigator !== "undefined" && navigator.onLine === false);
+    } else if (kind === "network") {
+      const offline = typeof navigator !== "undefined" && navigator.onLine === false;
       setState({
-        status: offline ? "offline" : "error",
-        message: offline ? "Offline. Changes will save when you're back online." : "Couldn't save. Trying again…",
+        status: "offline",
+        message: offline
+          ? "Offline. Changes will save when you're back online."
+          : "Can't reach your account right now. Trying again… If this keeps happening, use Test connection.",
       });
+    } else {
+      setState({ status: "error", message: `Couldn't save: ${detail}` });
     }
     scheduleRetry();
   }
