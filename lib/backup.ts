@@ -1,3 +1,4 @@
+import { appearance } from "./appearanceStore";
 import { hasTracker, isTracker, slotTracker, type Tracker } from "./slots";
 import { addToBook, bookView, isBookView, isSpellList, spellBook, type BookView } from "./spellbook";
 import type { Spell } from "./spells";
@@ -103,9 +104,10 @@ export function importBackup({ spells, view, tracker }: BackupContents, mode: Im
   if (tracker && !hasTracker(slotTracker.getSnapshot())) slotTracker.set(tracker);
 }
 
-/** Hard reset: wipes the spell book, display style and slot tracker, leaving a blank slate. */
+/** Hard reset: wipes the spell book, display style, slot tracker and appearance, leaving a blank slate. */
 export function eraseEverything() {
   spellBook.clear();
   bookView.clear();
   slotTracker.clear();
+  appearance.clear();
 }

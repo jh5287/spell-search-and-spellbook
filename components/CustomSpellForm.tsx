@@ -12,6 +12,7 @@ import {
   type Draft,
   type Errors,
 } from "@/lib/customSpell";
+import { SCHOOLS } from "@/lib/schools";
 import { ordinal, type Spell } from "@/lib/spells";
 import styles from "./CustomSpellForm.module.css";
 
@@ -26,7 +27,6 @@ interface Props {
 
 // Suggestions only (via <datalist>): every one of these fields still accepts free text.
 const KINDS = ["Spell", "Ability", "Feature", "Item", "Skill", "Trait"];
-const SCHOOLS = ["Abjuration", "Conjuration", "Divination", "Enchantment", "Evocation", "Illusion", "Necromancy", "Transmutation"];
 const CASTING_TIMES = ["Action", "Bonus Action", "Reaction", "1 minute", "10 minutes", "1 hour"];
 const RANGES = ["Self", "Touch", "30 feet", "60 feet", "120 feet", "Sight"];
 const DURATIONS = ["Instantaneous", "1 round", "1 minute", "10 minutes", "1 hour", "8 hours", "24 hours", "Until dispelled"];

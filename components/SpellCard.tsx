@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { BookView } from "@/lib/spellbook";
+import { schoolVar } from "@/lib/schools";
 import { subtitle, type Spell } from "@/lib/spells";
 import styles from "./SpellCard.module.css";
 
@@ -56,10 +57,14 @@ function Tags({ spell, flags }: { spell: Spell; flags?: boolean }) {
 
 export default function SpellCard({ spell, variant = "full", headingLevel = 2, handle, actions }: Props) {
   const Heading = headingLevel === 2 ? "h2" : "h3";
+  // custom entries that aren't spells, or use a school of their own, stay uncoloured
+  const school = spell.kind ? undefined : schoolVar(spell.school.name);
+  const style = school ? ({ "--school": school } as CSSProperties) : undefined;
+  const dot = school && <span className={styles.dot} aria-hidden="true" />;
 
   if (variant === "full") {
     return (
-      <article className={styles.card}>
+      <article className={styles.card} style={style}>
         <header className={styles.header}>
           {handle}
           <div className={styles.titleBlock}>
@@ -76,20 +81,20 @@ export default function SpellCard({ spell, variant = "full", headingLevel = 2, h
   const meta = [spell.kind ?? spell.school.name, spell.casting_time, spell.range].filter(Boolean).join(" · ");
 
   return (
-    <article className={`${styles.card} ${styles.row}`}>
+    <article className={`${styles.card} ${styles.row}`} style={style}>
       {handle}
       <details className={styles.details}>
         <summary className={`${styles.summary} ${variant === "list" ? styles.listSummary : ""}`}>
           <Heading className={styles.rowName}>{spell.name} <Tags spell={spell} flags /></Heading>
           {variant === "list" ? (
             <>
-              <span className={styles.col}>{spell.kind ?? spell.school.name}</span>
+              <span className={styles.col}>{dot}{spell.kind ?? spell.school.name}</span>
               <span className={styles.col}>{spell.casting_time}</span>
               <span className={styles.col}>{spell.range}</span>
               <span className={styles.col}>{spell.duration}</span>
             </>
           ) : (
-            meta && <span className={styles.meta}>{meta}</span>
+            meta && <span className={styles.meta}>{dot}{meta}</span>
           )}
         </summary>
         <div className={styles.expanded}>

@@ -1,6 +1,6 @@
 .dialog {
-  width: min(30rem, calc(100vw - 2rem)); padding: 0; border: 1px solid #8a6d3b; border-radius: 12px;
-  background: #fbf5e3; color: #222;
+  width: min(30rem, calc(100vw - 2rem)); padding: 0; border: 1px solid var(--accent); border-radius: 12px;
+  background: var(--surface); color: var(--text);
 }
 .dialog::backdrop { background: rgba(40, 30, 10, 0.55); }
 .body { display: grid; gap: 0.75rem; padding: 1.25rem; }
@@ -8,5 +8,5 @@
 .text { margin: 0; }
 .choices { display: grid; gap: 0.35rem; }
 .choices .btn { justify-self: start; }
-.hint { margin: 0 0 0.5rem; font-size: 0.85rem; color: #5a4a2a; }
-.link { justify-self: start; padding: 0; font: inherit; font-size: 0.9rem; color: #2b6cb0; text-decoration: underline; border: 0; background: none; cursor: pointer; }
+.hint { margin: 0 0 0.5rem; font-size: 0.85rem; color: var(--muted); }
+.link { justify-self: start; padding: 0; font: inherit; font-size: 0.9rem; color: var(--focus); text-decoration: underline; border: 0; background: none; cursor: pointer; }

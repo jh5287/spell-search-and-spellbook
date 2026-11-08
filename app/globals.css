@@ -1,13 +1,99 @@
+/*
+ * Colours come from these variables so the theme and accent can change at runtime (see lib/appearance.ts).
+ * :root is the light theme and also what the server renders; [data-theme="dark"] overrides it.
+ * --accent and --on-accent are set on <html> from the user's choice and fall back to gold here.
+ */
+:root {
+  color-scheme: light;
+  --accent: #8a6d3b;
+  --on-accent: #fff;
+  --accent-hover: color-mix(in srgb, var(--accent) 80%, black);
+  --accent-text: color-mix(in srgb, var(--accent) 50%, var(--text));
+  --hover: color-mix(in srgb, var(--accent) 16%, var(--field));
+  --pip-hover: color-mix(in srgb, var(--accent) 40%, var(--field));
+
+  --bg: #f1e9d2;
+  --surface: #fbf5e3;
+  --field: #fffdf6;
+  --text: #222;
+  --muted: #5a4a2a;
+  --border: #c9b78a;
+  --divider: #e0d2a8;
+  --focus: #2b6cb0;
+
+  --danger: #8b2e2e;
+  --danger-fill: #8b2e2e;
+  --danger-fill-hover: #6f2323;
+  --danger-tint: #f8e3e0;
+  --danger-wash: #fbeeec;
+  --success: #2f6b3a;
+  --warning: #b08a2e;
+
+  --toast-bg: #3b2f17;
+  --toast-text: #fff;
+  --toast-btn-bg: #f3e7c4;
+  --toast-btn-text: #3b2f17;
+  --toast-focus: #9cc4ff;
+
+  /* one colour per school of magic; mid-tones that read on both themes */
+  --school-abjuration: #3f78c4;
+  --school-conjuration: #d4a617;
+  --school-divination: #2aa5b3;
+  --school-enchantment: #d9559c;
+  --school-evocation: #cf3f35;
+  --school-illusion: #8a5cd0;
+  --school-necromancy: #3e9a6a;
+  --school-transmutation: #d2701f;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17130d;
+  --surface: #231e15;
+  --field: #14100a;
+  --text: #ece4d0;
+  --muted: #b7ab8f;
+  --border: #4d4332;
+  --divider: #3a3226;
+  --focus: #8cbcf2;
+
+  --danger: #f0928a;
+  --danger-fill: #a8403a;
+  --danger-fill-hover: #8f332e;
+  --danger-tint: #4a2724;
+  --danger-wash: #2e1b19;
+  --success: #7fc28d;
+  --warning: #d4aa4a;
+
+  --toast-bg: #ece4d0;
+  --toast-text: #1b1710;
+  --toast-btn-bg: #1b1710;
+  --toast-btn-text: #ece4d0;
+  --toast-focus: #1f5fa8;
+}
+
+/* the "School colours" setting off: every school falls back to a neutral */
+[data-schools="off"] {
+  --school-abjuration: var(--border);
+  --school-conjuration: var(--border);
+  --school-divination: var(--border);
+  --school-enchantment: var(--border);
+  --school-evocation: var(--border);
+  --school-illusion: var(--border);
+  --school-necromancy: var(--border);
+  --school-transmutation: var(--border);
+}
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #f1e9d2; color: #222; line-height: 1.5; }
+body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
 
 .btn {
-  font: inherit; padding: 0.4rem 0.8rem; border: 1px solid #8a6d3b; border-radius: 6px;
-  background: #fffdf6; color: #5c4721; cursor: pointer;
+  font: inherit; padding: 0.4rem 0.8rem; border: 1px solid var(--accent); border-radius: 6px;
+  background: var(--field); color: var(--accent-text); cursor: pointer;
 }
-.btn:hover:not(:disabled) { background: #f3e7c4; }
+.btn:hover:not(:disabled) { background: var(--hover); }
 .btn:disabled { opacity: 0.7; cursor: default; }
-.btn[aria-pressed="true"], .btn-primary { background: #8a6d3b; color: #fff; }
-.btn[aria-pressed="true"]:hover, .btn-primary:hover:not(:disabled) { background: #725a2f; }
-.btn:focus-visible { outline: 2px solid #2b6cb0; outline-offset: 2px; }
+.btn[aria-pressed="true"], .btn-primary { background: var(--accent); color: var(--on-accent); }
+.btn[aria-pressed="true"]:hover, .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
