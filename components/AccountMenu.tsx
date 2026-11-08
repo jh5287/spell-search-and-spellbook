@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import type { SyncState } from "@/lib/sync";
 import { useAccount } from "./AccountProvider";
+import ConnectionCheck from "./ConnectionCheck";
 import styles from "./AccountMenu.module.css";
 
 /** Short wording for the header chip, in the spirit of a document that saves itself. */
@@ -126,6 +127,7 @@ export default function AccountMenu() {
               >
                 Sign out
               </button>
+              <ConnectionCheck />
             </div>
           ) : (
             <form className={styles.stack} onSubmit={submit}>
@@ -179,6 +181,7 @@ export default function AccountMenu() {
               >
                 {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
               </button>
+              <ConnectionCheck />
             </form>
           )}
         </div>

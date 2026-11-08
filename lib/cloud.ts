@@ -8,6 +8,9 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 /** Accounts only appear once the two Supabase settings exist; without them the app works as it always did. */
 export const cloudConfigured = Boolean(url && anonKey);
 
+/** For the connection check only. Both values are public by design (they ship in the page). */
+export const cloudSettings = { url, anonKey };
+
 let client: SupabaseClient | null = null;
 
 /** The anon key is meant to be public. What each person can read or change is limited by the row-level
@@ -23,10 +26,31 @@ interface Failure {
   code?: string;
 }
 
+/** Turns Supabase's terse errors into something a person can act on, keeping the original for reference. */
+export function describeFailure(error: Failure, status: number): CloudError {
+  const text = error.message ?? "";
+  const ref = `${error.code ?? status}: ${text}`;
+
+  if (error.code === "PGRST205" || error.code === "42P01" || /could not find the table|relation .* does not exist/i.test(text)) {
+    return new CloudError(`The user_data table doesn't exist in your Supabase project. Run supabase/schema.sql in the SQL Editor. (${ref})`, "other");
+  }
+  if (error.code === "42501" || /row-level security|permission denied/i.test(text)) {
+    return new CloudError(`Supabase blocked the save (permission denied). Run supabase/schema.sql again to create the access rules. (${ref})`, "other");
+  }
+  if (/invalid api key|no api key/i.test(text)) {
+    return new CloudError(`Supabase rejected the API key. Check NEXT_PUBLIC_SUPABASE_ANON_KEY and redeploy. (${ref})`, "other");
+  }
+  if (status === 401 || error.code === "PGRST301" || error.code === "PGRST303" || /jwt/i.test(text)) {
+    return new CloudError(text, "auth");
+  }
+  if (status === 0 || /failed to fetch|network|load failed|fetch failed/i.test(text)) {
+    return new CloudError(text, "network");
+  }
+  return new CloudError(`${text} (${error.code ?? status})`, "other");
+}
+
 function fail(error: Failure, status: number): never {
-  const auth = status === 401 || status === 403 || error.code === "PGRST301" || /jwt/i.test(error.message);
-  const network = status === 0 || /failed to fetch|network|load failed|fetch failed/i.test(error.message);
-  throw new CloudError(error.message, auth ? "auth" : network ? "network" : "other");
+  throw describeFailure(error, status);
 }
 
 const TABLE = "user_data";
