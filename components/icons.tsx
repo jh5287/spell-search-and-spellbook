@@ -45,6 +45,14 @@ export function SlotsIcon() {
   );
 }
 
+export function MenuIcon({ open }: { open?: boolean }) {
+  return (
+    <svg {...base}>
+      {open ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+    </svg>
+  );
+}
+
 export function GripIcon() {
   return (
     <svg {...base} width={18} height={18} fill="currentColor" stroke="none">

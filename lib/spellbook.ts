@@ -32,6 +32,9 @@ export const spellBook = createLocalStore<Spell[]>("spellbook:spells", [], isSpe
 
 export const bookView = createLocalStore<BookView>("spellbook:view", "full", isBookView);
 
+/** Whether the filter chips above the book are showing. Remembered, so it stays how you like it. */
+export const filtersOpen = createLocalStore<boolean>("spellbook:filters-open", false, (v): v is boolean => typeof v === "boolean");
+
 export function addToBook(spells: Spell[], spell: Spell): Spell[] {
   return spells.some((s) => s.index === spell.index) ? spells : [...spells, spell];
 }

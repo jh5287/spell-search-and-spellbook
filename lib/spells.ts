@@ -26,6 +26,8 @@ export interface Spell {
   custom?: boolean;
   /** Set on custom entries that aren't spells (e.g. "Ability", "Item"); `level` is meaningless then. */
   kind?: string;
+  /** Present on the API's damaging spells (not all of them). Only its presence is used, to spot damage. */
+  damage?: unknown;
 }
 
 export async function fetchSpellList(signal?: AbortSignal): Promise<SpellSummary[]> {

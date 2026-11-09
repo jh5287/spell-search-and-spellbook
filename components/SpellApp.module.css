@@ -3,6 +3,7 @@
 .title { font-size: 1.75rem; margin: 0; }
 .nav { display: flex; gap: 0.5rem; }
 .tools { display: flex; align-items: center; gap: 0.5rem; }
+.menuButton { display: none; }
 .tab {
   display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.85rem; font: inherit;
   border: 2px solid var(--accent); border-radius: 999px; background: var(--field); color: var(--accent-text); cursor: pointer;
@@ -14,4 +15,29 @@
 .badge {
   min-width: 1.3rem; height: 1.3rem; padding: 0 0.3rem; border-radius: 999px;
   background: var(--danger-fill); color: #fff; font-size: 0.75rem; font-weight: bold; line-height: 1.3rem; text-align: center;
+}
+
+/* Phones and narrow windows: the four tabs don't fit beside everything else, so they fold into a menu. */
+@media (max-width: 40rem) {
+  .container { padding: 0.75rem; }
+  .header { justify-content: flex-start; gap: 0.5rem; margin-top: 0.25rem; }
+  .menuButton {
+    flex: none; display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: 0;
+    border: 2px solid var(--accent); border-radius: 10px; background: var(--field); color: var(--accent-text); cursor: pointer;
+  }
+  .menuButton svg { width: 1.5rem; height: 1.5rem; }
+  .menuButton:hover { background: var(--hover); }
+  .menuButton[aria-expanded="true"] { background: var(--accent); color: var(--on-accent); }
+  .menuButton:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .title { flex: 1 1 0; min-width: 0; font-size: 1.3rem; line-height: 1.25; overflow-wrap: anywhere; }
+  .tools { flex: none; }
+
+  /* closed by default; opens as a panel under the bar and takes the full width */
+  .nav {
+    display: none; order: 10; flex: 1 1 100%; flex-direction: column; gap: 0.4rem; padding: 0.5rem;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+  }
+  .navOpen { display: flex; }
+  .tab { min-height: 2.75rem; justify-content: flex-start; border-radius: 10px; font-size: 1.05rem; }
+  .badge { margin-left: auto; }
 }
