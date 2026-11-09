@@ -27,6 +27,7 @@ export default function SpellSearch({ savedIds, onAdd }: Props) {
   const [added, setAdded] = useState<string | null>(null);
   const requested = useRef(new Set<string>());
   const inputRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const optionId = (i: number) => `${listId}-option-${i}`;
 
@@ -74,6 +75,12 @@ export default function SpellSearch({ savedIds, onAdd }: Props) {
     inputRef.current?.select();
   }
 
+  /** The spell sits above the list, so after tapping a suggestion bring it back into view. */
+  function showCard() {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    cardRef.current?.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+  }
+
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (visible.length === 0 || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
     e.preventDefault();
@@ -111,11 +118,41 @@ export default function SpellSearch({ savedIds, onAdd }: Props) {
       {listError && <p role="alert" className={styles.message}>{listError}</p>}
       {noMatch && <p className={styles.message}>No spell found.</p>}
 
+      <div ref={cardRef} className={styles.card}>
+        {failedUrl && failedUrl === activeUrl && !spell && (
+          <p role="alert" className={styles.message}>
+            Could not load that spell.{" "}
+            <button
+              className="btn"
+              onClick={() => {
+                requested.current.delete(failedUrl);
+                setFailedUrl(null);
+                setAttempt((n) => n + 1);
+              }}
+            >
+              Try again
+            </button>
+          </p>
+        )}
+        {spell && (
+          <SpellCard
+            spell={spell}
+            actions={
+              savedIds.has(spell.index) ? (
+                <button className="btn" disabled>✓ In your book</button>
+              ) : (
+                <button className="btn btn-primary" onClick={() => handleAdd(spell)}>Add to book</button>
+              )
+            }
+          />
+        )}
+      </div>
+
       {visible.length > 0 && (
         <div className={styles.suggestions}>
           <p className={styles.count}>
             {matches.length === 1 ? "1 possible match" : `${matches.length} possible matches`}. Use the arrow keys or tap one
-            to see it.
+            to see it above.
           </p>
           <ul id={listId} role="listbox" aria-label="Matching spells" className={styles.list}>
             {visible.map((s, i) => (
@@ -126,7 +163,10 @@ export default function SpellSearch({ savedIds, onAdd }: Props) {
                 aria-selected={i === index}
                 className={`${styles.option} ${i === index ? styles.selected : ""}`}
                 onMouseDown={(e) => e.preventDefault()} // keep the typing focus in the input
-                onClick={() => setActiveIndex(i)}
+                onClick={() => {
+                  setActiveIndex(i);
+                  showCard();
+                }}
               >
                 <span className={styles.optionName}>{s.name}</span>
                 <span className={styles.optionMeta}>
@@ -147,33 +187,6 @@ export default function SpellSearch({ savedIds, onAdd }: Props) {
         </div>
       )}
 
-      {failedUrl && failedUrl === activeUrl && !spell && (
-        <p role="alert" className={styles.message}>
-          Could not load that spell.{" "}
-          <button
-            className="btn"
-            onClick={() => {
-              requested.current.delete(failedUrl);
-              setFailedUrl(null);
-              setAttempt((n) => n + 1);
-            }}
-          >
-            Try again
-          </button>
-        </p>
-      )}
-      {spell && (
-        <SpellCard
-          spell={spell}
-          actions={
-            savedIds.has(spell.index) ? (
-              <button className="btn" disabled>✓ In your book</button>
-            ) : (
-              <button className="btn btn-primary" onClick={() => handleAdd(spell)}>Add to book</button>
-            )
-          }
-        />
-      )}
     </section>
   );
 }

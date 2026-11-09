@@ -7,22 +7,22 @@ import ConnectionCheck from "./ConnectionCheck";
 import styles from "./AccountMenu.module.css";
 
 /** Short wording for the header chip, in the spirit of a document that saves itself. */
-function statusText(sync: SyncState): { label: string; tone: "ok" | "busy" | "warn" } {
+function statusText(sync: SyncState): { label: string; short: string; tone: "ok" | "busy" | "warn" } {
   switch (sync.status) {
     case "saved":
-      return { label: "All changes saved", tone: "ok" };
+      return { label: "All changes saved", short: "Saved", tone: "ok" };
     case "saving":
-      return { label: "Saving…", tone: "busy" };
+      return { label: "Saving…", short: "Saving…", tone: "busy" };
     case "loading":
-      return { label: "Syncing…", tone: "busy" };
+      return { label: "Syncing…", short: "Syncing…", tone: "busy" };
     case "offline":
-      return { label: "Offline. Will save when you're back", tone: "warn" };
+      return { label: "Offline. Will save when you're back", short: "Offline", tone: "warn" };
     case "conflict":
-      return { label: "Needs your attention", tone: "warn" };
+      return { label: "Needs your attention", short: "Attention", tone: "warn" };
     case "error":
-      return { label: "Couldn't save", tone: "warn" };
+      return { label: "Couldn't save", short: "Not saved", tone: "warn" };
     default:
-      return { label: "", tone: "busy" };
+      return { label: "", short: "", tone: "busy" };
   }
 }
 
@@ -96,7 +96,8 @@ export default function AccountMenu() {
           onClick={() => setOpen((o) => !o)}
         >
           <span className={`${styles.dot} ${styles[status.tone]}`} aria-hidden="true" />
-          <span>{status.label || "Account"}</span>
+          <span className={styles.long}>{status.label || "Account"}</span>
+          <span className={styles.short}>{status.short || "Account"}</span>
         </button>
       ) : (
         <button className="btn" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((o) => !o)}>

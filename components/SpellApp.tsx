@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocalStore } from "@/lib/localStore";
 import {
   newCastId,
@@ -12,11 +12,12 @@ import {
   type Cast,
   type CastOption,
 } from "@/lib/slots";
+import { NO_FILTERS, type BookFilters } from "@/lib/spellFilters";
 import { addToBook, removeFromBook, reorderWithinGroup, replaceInBook, spellBook } from "@/lib/spellbook";
 import type { Spell } from "@/lib/spells";
 import CustomSpellForm from "./CustomSpellForm";
 import AccountMenu from "./AccountMenu";
-import { BookIcon, PlusIcon, SearchIcon, SlotsIcon } from "./icons";
+import { BookIcon, MenuIcon, PlusIcon, SearchIcon, SlotsIcon } from "./icons";
 import SettingsMenu from "./SettingsMenu";
 import SlotTracker from "./SlotTracker";
 import SpellBook from "./SpellBook";
@@ -43,7 +44,34 @@ export default function SpellApp() {
   // the custom entry currently being edited in the Create tab, if any
   const [editing, setEditing] = useState<Spell | null>(null);
   const [banner, setBanner] = useState<BannerMessage | null>(null);
+  // kept here, not in the book, so filters survive a trip to another tab; they reset on reload
+  const [filters, setFilters] = useState<BookFilters>(NO_FILTERS);
   const dismissBanner = useCallback(() => setBanner(null), []);
+
+  // On a narrow screen the tabs collapse into a menu behind the hamburger button.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navId = useId();
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointer = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (!navRef.current?.contains(target) && !menuButtonRef.current?.contains(target)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMenuOpen(false);
+      menuButtonRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   const addSpell = (s: Spell) => setSaved((prev) => addToBook(prev, s));
 
@@ -82,15 +110,28 @@ export default function SpellApp() {
   return (
     <main className={styles.container}>
       <header className={styles.header}>
+        <button
+          ref={menuButtonRef}
+          className={styles.menuButton}
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+          aria-controls={navId}
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          <MenuIcon open={menuOpen} />
+        </button>
         <h1 className={styles.title}>{mode === "create" && editing ? "Edit Entry" : TITLES[mode]}</h1>
-        <nav className={styles.nav} aria-label="Sections">
+        <nav id={navId} ref={navRef} className={`${styles.nav} ${menuOpen ? styles.navOpen : ""}`} aria-label="Sections">
           {tabs.map((t) => (
             <button
               key={t.mode}
               className={styles.tab}
               aria-current={mode === t.mode ? "page" : undefined}
               aria-label={t.badge ? `${t.label} (${t.badge} saved)` : t.label}
-              onClick={() => setMode(t.mode)}
+              onClick={() => {
+                setMode(t.mode);
+                setMenuOpen(false);
+              }}
             >
               {t.icon}
               <span>{t.label}</span>
@@ -103,6 +144,7 @@ export default function SpellApp() {
             onReset={() => {
               setEditing(null);
               setBanner(null);
+              setFilters(NO_FILTERS);
               setMode("search");
             }}
           />
@@ -136,6 +178,8 @@ export default function SpellApp() {
         <SpellBook
           spells={saved}
           tracker={tracker}
+          filters={filters}
+          onFiltersChange={setFilters}
           onCast={castSpell}
           onReorder={(key, activeId, overId) =>
             setSaved((prev) => reorderWithinGroup(prev, key, activeId, overId))

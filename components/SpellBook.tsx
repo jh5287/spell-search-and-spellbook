@@ -23,13 +23,17 @@ import { useLocalStore } from "@/lib/localStore";
 import type { CastOption, Tracker } from "@/lib/slots";
 import type { Spell } from "@/lib/spells";
 import CastControl from "./CastControl";
+import { filterSpells, NO_FILTERS, type BookFilters } from "@/lib/spellFilters";
 import { GripIcon } from "./icons";
 import SpellCard from "./SpellCard";
+import SpellFilters from "./SpellFilters";
 import styles from "./SpellBook.module.css";
 
 interface Props {
   spells: Spell[];
   tracker: Tracker;
+  filters: BookFilters;
+  onFiltersChange: (filters: BookFilters) => void;
   onCast: (spell: Spell, option: CastOption) => void;
   onReorder: (groupKey: string, activeId: string, overId: string) => void;
   onRemove: (index: string) => void;
@@ -97,7 +101,7 @@ function SortableSpell({ spell, view, arranging, tracker, onCast, onRemove, onEd
   );
 }
 
-export default function SpellBook({ spells, tracker, onCast, onReorder, onRemove, onEdit }: Props) {
+export default function SpellBook({ spells, tracker, filters, onFiltersChange, onCast, onReorder, onRemove, onEdit }: Props) {
   const [view, setView] = useLocalStore(bookView);
   const [arranging, setArranging] = useState(false);
   const sensors = useSensors(
@@ -108,6 +112,8 @@ export default function SpellBook({ spells, tracker, onCast, onReorder, onRemove
   if (spells.length === 0) {
     return <p className={styles.empty}>Your spell book is empty. Search for a spell and add it to see it here.</p>;
   }
+
+  const visibleSpells = filterSpells(spells, filters);
 
   function handleDragEnd(groupKey: string, { active, over }: DragEndEvent) {
     if (over && active.id !== over.id) onReorder(groupKey, String(active.id), String(over.id));
@@ -141,7 +147,17 @@ export default function SpellBook({ spells, tracker, onCast, onReorder, onRemove
         </p>
       )}
 
-      {groupSpells(spells).map(({ key, heading, spells: group }) => (
+      <SpellFilters filters={filters} onChange={onFiltersChange} shown={visibleSpells.length} total={spells.length} />
+      {visibleSpells.length === 0 && (
+        <p className={styles.empty}>
+          No spells in your book match these filters.{" "}
+          <button type="button" className="btn" onClick={() => onFiltersChange(NO_FILTERS)}>
+            Clear filters
+          </button>
+        </p>
+      )}
+
+      {groupSpells(visibleSpells).map(({ key, heading, spells: group }) => (
         <section key={key} className={styles.level}>
           <h2 className={styles.levelHeading}>
             {heading} <span className={styles.count}>({group.length})</span>
