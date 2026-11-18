@@ -9,7 +9,6 @@ import {
   type Mods,
   type Recharge,
 } from "./classRules";
-import { createLocalStore } from "./localStore";
 import { ordinal, type Spell } from "./spells";
 
 /** A spell cast from a slot, kept on the slot so you can see where each one went. */
@@ -145,7 +144,6 @@ export function isTracker(v: unknown): v is Tracker {
   );
 }
 
-export const slotTracker = createLocalStore<Tracker>("spellbook:slots", EMPTY_TRACKER, isTracker);
 
 export function hasTracker(t: Tracker): boolean {
   return t.classes.length > 0 || t.slots.length > 0 || t.pact !== null || t.abilities.length > 0;

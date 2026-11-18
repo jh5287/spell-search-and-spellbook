@@ -80,16 +80,16 @@ export default function BackupPanel({ onReset }: PanelProps) {
 
   function runImport(mode: ImportMode) {
     if (!pending) return;
-    if (mode === "replace" && !window.confirm("Replace your spell book and slot tracker with the contents of this file?")) {
+    if (mode === "replace" && !window.confirm("Replace all your characters with the ones in this file?")) {
       return;
     }
     importBackup(pending.contents, mode);
-    const { spells } = pending.contents;
+    const { characters } = pending.contents;
     setMessage({
       text:
         mode === "replace"
-          ? `Backup restored${spells ? `: ${plural(spells.length, "spell")} in your book` : ""}.`
-          : `Imported ${plural(pending.newSpells, "new spell")}.`,
+          ? `Backup restored${characters ? `: ${plural(characters.length, "character")}` : ""}.`
+          : `Imported ${plural(pending.newSpells, "new spell")}${characters && characters.length > 1 ? ` across ${plural(characters.length, "character")}` : ""}.`,
     });
     setPending(null);
   }
@@ -119,8 +119,11 @@ export default function BackupPanel({ onReset }: PanelProps) {
             <strong>{pending.fileName}</strong>
             {exportedOn && ` (exported ${exportedOn})`} contains{" "}
             {[
-              contents.spells && `${plural(contents.spells.length, "spell")} (${pending.newSpells} not in your book yet)`,
-              contents.tracker && "a slot tracker",
+              contents.characters &&
+                `${plural(contents.characters.length, "character")} with ${plural(
+                  contents.characters.reduce((n, c) => n + c.spells.length, 0),
+                  "spell",
+                )} (${pending.newSpells} not in your books yet)`,
             ]
               .filter(Boolean)
               .join(" and ")}
@@ -138,7 +141,7 @@ export default function BackupPanel({ onReset }: PanelProps) {
             </button>
           </div>
           <p className={styles.hint}>
-            Adding keeps your current spells and slot tracker (a tracker is only brought in if you don&apos;t have one).
+            Adding keeps what you have: characters you don&apos;t have are added, and ones you do have get any spells they&apos;re missing.
           </p>
         </div>
       )}
@@ -150,7 +153,7 @@ export default function BackupPanel({ onReset }: PanelProps) {
       <div className={styles.danger}>
         <h3 className={styles.dangerHeading}>Start over</h3>
         <p className={styles.text}>
-          Permanently deletes your spell book, custom spells, slot tracker and settings
+          Permanently deletes all your characters, their spell books, custom spells and slot trackers, and your settings
           {user ? " from this browser and from your account (it saves automatically, so the account copy is erased too)" : " from this browser"}.
           Export a backup first if you might want them back.
         </p>

@@ -1,0 +1,49 @@
+.wrap { margin: 0 0 1rem; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.trigger {
+  display: inline-flex; align-items: center; gap: 0.6rem; max-width: 100%; min-height: 2.75rem; padding: 0.35rem 0.9rem;
+  font: inherit; text-align: left; color: var(--accent-text); border: 1px solid var(--accent); border-radius: 10px;
+  background: var(--field); cursor: pointer;
+}
+.trigger:hover { background: var(--hover); }
+.trigger:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.trigger svg { flex: none; width: 1.3rem; height: 1.3rem; }
+.triggerText { display: grid; min-width: 0; line-height: 1.25; }
+.name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta { font-size: 0.85rem; color: var(--muted); overflow-wrap: anywhere; }
+.triggerText .meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.caret { flex: none; margin-left: 0.25rem; }
+
+.panel { margin-top: 0.5rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.list { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; padding: 0.4rem 0.5rem;
+  border: 1px solid var(--divider); border-left-width: 4px; border-radius: 8px; background: var(--field);
+}
+.row.open { border-color: var(--accent); }
+.pick {
+  flex: 1 1 12rem; display: grid; gap: 0.1rem; min-width: 0; min-height: 2.5rem; padding: 0.2rem 0.4rem; font: inherit; text-align: left;
+  color: var(--text); border: 0; border-radius: 6px; background: none; cursor: pointer;
+}
+.pick:hover { background: var(--hover); }
+.pick:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pickName { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; font-weight: bold; overflow-wrap: anywhere; }
+.badge {
+  padding: 0 0.45rem; font-size: 0.7rem; font-weight: bold; color: var(--on-accent); border-radius: 999px; background: var(--accent);
+}
+.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.renameForm, .addForm { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; width: 100%; }
+.addForm { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--divider); }
+.input {
+  flex: 1 1 12rem; min-width: 0; padding: 0.5rem 0.65rem; font: inherit; font-size: 1rem; /* >=16px avoids iOS zoom */
+  border: 2px solid var(--accent); border-radius: 8px; background: var(--field); color: var(--text);
+}
+.hint { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--muted); }
+
+@media (max-width: 40rem) {
+  .trigger { width: 100%; }
+  .triggerText { flex: 1; }
+  .actions { width: 100%; }
+  .actions .btn { flex: 1; min-height: 2.5rem; }
+}

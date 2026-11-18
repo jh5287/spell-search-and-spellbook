@@ -9,9 +9,8 @@ import styles from "./SyncConflictDialog.module.css";
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function describe(c: Contents): string {
-  const parts = [plural(c.spells.length, "spell")];
-  if (c.tracker.classes.length || c.tracker.slots.length || c.tracker.abilities.length) parts.push("a slot tracker");
-  return parts.join(" and ");
+  const spells = c.characters.reduce((n, ch) => n + ch.spells.length, 0);
+  return `${plural(c.characters.length, "character")} and ${plural(spells, "spell")}`;
 }
 
 /** Shown when this browser and the account both have changes the other hasn't seen. Nothing is lost until a choice is made. */
@@ -48,7 +47,7 @@ export default function SyncConflictDialog() {
             <button className="btn btn-primary" autoFocus onClick={() => resolveConflict("merge")}>
               Merge both (recommended)
             </button>
-            <p className={styles.hint}>Keeps every spell from both. If your account has a slot tracker, that one is kept.</p>
+            <p className={styles.hint}>Keeps every character and spell from both. Where both have the same character, your account&apos;s slot tracker is kept.</p>
             <button className="btn" onClick={() => resolveConflict("cloud")}>
               Use my account&apos;s version
             </button>

@@ -46,3 +46,14 @@ If you can't use that yet, open the browser's DevTools → Network tab, filter b
 | No `user_data` request at all | The settings weren't built in | Add both variables in Vercel, then **redeploy** |
 
 Never put the `service_role` / secret key in `NEXT_PUBLIC_` settings: everything with that prefix is visible to every visitor.
+
+## Multiple characters
+
+Each character has their own spell book, class and level, spell slots and abilities. The bar under the header shows the open character; tap it to switch, add a new character, or rename, duplicate or delete one (up to 20, and there's always at least one).
+
+- A book from before characters existed becomes your first character automatically, with nothing lost.
+- Characters work without an account. When you're signed in they save to your account like everything else and follow you to other devices.
+- Which character is open is remembered per device and isn't synced, so switching on your phone doesn't change your desktop.
+- Backups contain every character. Older single-book backups still import (they land in your first character).
+- Hard reset erases every character.
+- Backup files and account copies are now version 2. An older copy of the app that hasn't been refreshed will refuse to read a version 2 account copy; reloading the page fixes it.

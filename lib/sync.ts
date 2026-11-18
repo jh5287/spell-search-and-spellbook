@@ -1,7 +1,6 @@
 import { backupData, importBackup, parseBackupData, snapshotContents, type BackupContents } from "./backup";
-import { EMPTY_TRACKER, hasTracker } from "./slots";
-import { addToBook, bookView, spellBook } from "./spellbook";
-import { slotTracker } from "./slots";
+import { EMPTY_CHARACTERS, characterBook, isUntouched, mergeCharacters } from "./characters";
+import { bookView } from "./spellbook";
 
 /**
  * Keeps the data in this browser and a copy in the user's account in step, like a document that saves
@@ -66,11 +65,11 @@ const OFF: SyncState = { status: "off", message: null, conflict: null };
 
 /** Fills in anything missing so a partial copy compares and applies like a full one. */
 export function normalize(c: BackupContents): Contents {
-  return { spells: c.spells ?? [], view: c.view ?? "full", tracker: c.tracker ?? EMPTY_TRACKER };
+  return { characters: c.characters ?? EMPTY_CHARACTERS.characters, view: c.view ?? "full" };
 }
 
 export function isBlank(c: Contents): boolean {
-  return c.spells.length === 0 && !hasTracker(c.tracker);
+  return isUntouched(c.characters);
 }
 
 /** JSON with sorted keys. Postgres jsonb stores keys in its own order, so plain JSON.stringify would make
@@ -102,13 +101,9 @@ function hashString(str: string): string {
 
 export const hashContents = (c: Contents) => hashString(stableStringify(c));
 
-/** Both books together: the account's order first, then anything only this device has. */
+/** Both sets of characters together: the account's first, then anything only this device has. */
 export function mergeContents(cloud: Contents, local: Contents): Contents {
-  return {
-    spells: local.spells.reduce(addToBook, cloud.spells),
-    view: cloud.view,
-    tracker: hasTracker(cloud.tracker) ? cloud.tracker : local.tracker,
-  };
+  return { characters: mergeCharacters(cloud.characters, local.characters), view: cloud.view };
 }
 
 // What this browser last agreed on with the account: the revision it was at, and a hash of the data then.
@@ -380,7 +375,7 @@ export function createSyncEngine(api: CloudApi, options: SyncOptions = {}) {
     userId = uid;
     const s = session;
 
-    cleanups = [spellBook.subscribe(onLocalChange), bookView.subscribe(onLocalChange), slotTracker.subscribe(onLocalChange)];
+    cleanups = [characterBook.subscribe(onLocalChange), bookView.subscribe(onLocalChange)];
     if (typeof window !== "undefined") {
       const onOnline = () => retryNow();
       window.addEventListener("online", onOnline);

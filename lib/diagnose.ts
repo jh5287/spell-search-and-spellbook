@@ -1,6 +1,6 @@
 import { backupData } from "./backup";
 import { cloudConfigured, cloudSettings, describeFailure, supabase } from "./cloud";
-import { EMPTY_TRACKER } from "./slots";
+import { EMPTY_CHARACTERS } from "./characters";
 
 export type CheckResult = "pass" | "fail" | "warn" | "skip";
 
@@ -147,7 +147,7 @@ async function checkWrite(userId: string, hasRow: boolean, revision?: number): P
   }
 
   // no saved copy yet: write a clearly-marked blank probe row, then remove it again
-  const probe = { ...backupData({ spells: [], view: "full", tracker: EMPTY_TRACKER }), probe: true };
+  const probe = { ...backupData({ characters: EMPTY_CHARACTERS.characters, view: "full" }), probe: true };
   const inserted = await sb.from(TABLE).insert({ user_id: userId, data: probe, revision: 1 });
   if (inserted.error) {
     if (inserted.error.code === "23505") return { label, result: "pass", detail: "Your account's copy was created by a save in progress, so saving works." };
