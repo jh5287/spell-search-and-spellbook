@@ -1,22 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { slotTracker, spellBook } from "@/lib/characters";
 import { useLocalStore } from "@/lib/localStore";
 import {
   newCastId,
   recordCast,
   slotLabel,
-  slotTracker,
   targetRow,
   undoCast,
   type Cast,
   type CastOption,
 } from "@/lib/slots";
 import { NO_FILTERS, type BookFilters } from "@/lib/spellFilters";
-import { addToBook, removeFromBook, reorderWithinGroup, replaceInBook, spellBook } from "@/lib/spellbook";
+import { addToBook, removeFromBook, reorderWithinGroup, replaceInBook } from "@/lib/spellbook";
 import type { Spell } from "@/lib/spells";
 import CustomSpellForm from "./CustomSpellForm";
 import AccountMenu from "./AccountMenu";
+import CharacterSwitcher from "./CharacterSwitcher";
 import { BookIcon, MenuIcon, PlusIcon, SearchIcon, SlotsIcon } from "./icons";
 import SettingsMenu from "./SettingsMenu";
 import SlotTracker from "./SlotTracker";
@@ -151,6 +152,14 @@ export default function SpellApp() {
           <AccountMenu />
         </div>
       </header>
+
+      <CharacterSwitcher
+        onSwitched={() => {
+          // anything half-finished belonged to the character that was just left
+          setEditing(null);
+          setBanner(null);
+        }}
+      />
 
       {/* search and create stay mounted while hidden so typed text and the spell list aren't lost */}
       <div hidden={mode !== "search"}>

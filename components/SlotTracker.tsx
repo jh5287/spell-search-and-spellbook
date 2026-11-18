@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RECHARGE_LABELS, type ClassEntry, type Mods, type Recharge } from "@/lib/classRules";
+import { slotTracker } from "@/lib/characters";
 import { useLocalStore } from "@/lib/localStore";
 import {
   MAX_COUNT,
@@ -17,7 +18,6 @@ import {
   setSlotMax,
   setSlotUsed,
   shortRest,
-  slotTracker,
   updateAbility,
   updatePact,
   type Cast,

@@ -27,9 +27,6 @@ function isSpell(v: unknown): v is Spell {
 export const isSpellList = (v: unknown): v is Spell[] => Array.isArray(v) && v.every(isSpell);
 export const isBookView = (v: unknown): v is BookView => BOOK_VIEWS.some((o) => o.value === v);
 
-/** Saved spells, in the user's order (new spells go to the end of their level). */
-export const spellBook = createLocalStore<Spell[]>("spellbook:spells", [], isSpellList);
-
 export const bookView = createLocalStore<BookView>("spellbook:view", "full", isBookView);
 
 /** Whether the filter chips above the book are showing. Remembered, so it stays how you like it. */
