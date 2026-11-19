@@ -66,3 +66,10 @@
 .addRow select { width: auto; }
 .addForm { margin-top: 1rem; padding: 0.75rem 1rem; border: 1px dashed var(--accent); border-radius: 8px; }
 .addForm .edit { border-top: 0; padding-top: 0; }
+
+.sectionHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 0.5rem; }
+.sectionHead .heading { flex: 1; margin: 0; }
+.formWrap { margin-bottom: 1rem; }
+.editing { grid-column: 1 / -1; }
+.manage { display: flex; flex-wrap: wrap; gap: 0.4rem; padding-top: 0.5rem; border-top: 1px solid var(--divider); }
+.section .subheading { margin-top: 1rem; }

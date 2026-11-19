@@ -57,3 +57,16 @@ Each character has their own spell book, class and level, spell slots and abilit
 - Backups contain every character. Older single-book backups still import (they land in your first character).
 - Hard reset erases every character.
 - Backup files and account copies are now version 2. An older copy of the app that hasn't been refreshed will refuse to read a version 2 account copy; reloading the page fixes it.
+
+## Custom abilities
+
+On the Slots tab, **+ Add ability** tracks anything with limited uses: a homebrew class feature, something from an older edition, a feat, an item. Each ability has a name, an optional source (a class, feat or item), a number of uses, when they come back, whether to show dots or a number, and notes about what it does. Your own abilities can be edited or removed at any time. Class abilities added by "Set up slots & abilities" can be edited too, from Customize; running the setup again rebuilds them but never touches your own.
+
+When an ability comes back:
+
+- **Long rest** or **short or long rest**: restored by the Long rest and Short rest buttons.
+- **Some on short rest, all on long rest**: a short rest gives back as many as you choose (one, by default).
+- **Each turn**: restored by the **New turn** button, which appears once you have such an ability. Use it for "once per turn" effects and your Reaction.
+- **Manual only**: never restored automatically; tap its dots.
+
+The "Start from a template" menu fills the form in for you: common patterns (once per turn, Reaction, charges, a pool of points, uses equal to your proficiency bonus) and the 2024 Player's Handbook feats with limited uses (Lucky, Savage Attacker, Crusher, Piercer, Slasher, Fey Touched, Magic Initiate and more). Everything it fills in can be changed. A "uses equal to proficiency bonus" template uses your bonus at the time; update it when it goes up.

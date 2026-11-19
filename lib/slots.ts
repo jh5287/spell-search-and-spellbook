@@ -38,7 +38,10 @@ export interface Ability {
   recharge: Recharge;
   /** Show a number box instead of a row of pips, for big pools. */
   counter?: boolean;
+  /** What it does, in the player's own words. */
   note?: string;
+  /** For "some on short rest": how many come back (1 if not set). */
+  regain?: number;
 }
 
 export interface Tracker {
@@ -53,14 +56,15 @@ export interface Tracker {
 
 export const MAX_COUNT = 999;
 export const MAX_NAME = 60;
-export const MAX_NOTE = 200;
+export const MAX_NOTE = 500;
+export const MAX_SOURCE = 100;
 export const DEFAULT_MODS: Mods = { wis: 3, cha: 3 };
 
 export const EMPTY_TRACKER: Tracker = { classes: [], mods: DEFAULT_MODS, slots: [], pact: null, abilities: [] };
 
 const isCount = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_COUNT;
 const isMod = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= -5 && (n as number) <= 10;
-const RECHARGES: Recharge[] = ["short", "shortOne", "long", "manual"];
+const RECHARGES: Recharge[] = ["short", "shortOne", "long", "turn", "manual"];
 
 function isCast(v: unknown): v is Cast {
   const c = v as Partial<Cast> | null;
@@ -100,12 +104,13 @@ function isAbility(v: unknown): v is Ability {
     a.id.length <= 100 &&
     typeof a.name === "string" &&
     a.name.length <= MAX_NAME &&
-    (a.source === undefined || (typeof a.source === "string" && a.source.length <= 100)) &&
+    (a.source === undefined || (typeof a.source === "string" && a.source.length <= MAX_SOURCE)) &&
     isCount(a.max) &&
     isCount(a.used) &&
     RECHARGES.includes(a.recharge as Recharge) &&
     (a.counter === undefined || typeof a.counter === "boolean") &&
-    (a.note === undefined || (typeof a.note === "string" && a.note.length <= MAX_NOTE))
+    (a.note === undefined || (typeof a.note === "string" && a.note.length <= MAX_NOTE)) &&
+    (a.regain === undefined || (isCount(a.regain) && a.regain >= 1))
   );
 }
 
@@ -236,31 +241,40 @@ export function setPact(t: Tracker, pact: SlotRow | null): Tracker {
   return { ...t, pact };
 }
 
-export function updateAbility(
-  t: Tracker,
-  id: string,
-  patch: Partial<Pick<Ability, "name" | "max" | "used" | "recharge" | "counter">>,
-): Tracker {
+/** Trims; empty becomes "not set" so it isn't saved as a blank string. */
+const cleanText = (text: string | undefined, max: number): string | undefined => text?.trim().slice(0, max) || undefined;
+
+type AbilityPatch = Partial<Pick<Ability, "name" | "source" | "note" | "max" | "used" | "recharge" | "counter" | "regain">>;
+
+export function updateAbility(t: Tracker, id: string, patch: AbilityPatch): Tracker {
   return {
     ...t,
     abilities: t.abilities.map((a) => {
       if (a.id !== id) return a;
       const max = patch.max === undefined ? a.max : clampCount(patch.max);
       const used = patch.used === undefined ? a.used : clampCount(patch.used);
-      return { ...a, ...patch, name: (patch.name ?? a.name).slice(0, MAX_NAME), max, used: Math.min(used, max) };
+      const next: Ability = { ...a, ...patch, name: patch.name?.trim().slice(0, MAX_NAME) || a.name, max, used: Math.min(used, max) };
+      if ("source" in patch) next.source = cleanText(patch.source, MAX_SOURCE);
+      if ("note" in patch) next.note = cleanText(patch.note, MAX_NOTE);
+      if ("regain" in patch) next.regain = patch.regain === undefined ? undefined : Math.min(MAX_COUNT, Math.max(1, Math.trunc(patch.regain) || 1));
+      return next;
     }),
   };
 }
 
 export function addAbility(t: Tracker, ability: Omit<Ability, "id" | "used">): Tracker {
-  const max = clampCount(ability.max);
-  return {
-    ...t,
-    abilities: [
-      ...t.abilities,
-      { ...ability, id: newAbilityId(), name: ability.name.trim().slice(0, MAX_NAME), max, used: 0 },
-    ],
+  const added: Ability = {
+    id: newAbilityId(),
+    name: ability.name.trim().slice(0, MAX_NAME),
+    max: clampCount(ability.max),
+    used: 0,
+    recharge: ability.recharge,
+    ...(cleanText(ability.source, MAX_SOURCE) ? { source: cleanText(ability.source, MAX_SOURCE) } : {}),
+    ...(cleanText(ability.note, MAX_NOTE) ? { note: cleanText(ability.note, MAX_NOTE) } : {}),
+    ...(ability.counter ? { counter: true } : {}),
+    ...(ability.recharge === "shortOne" && ability.regain && ability.regain > 1 ? { regain: Math.min(MAX_COUNT, Math.trunc(ability.regain)) } : {}),
   };
+  return { ...t, abilities: [...t.abilities, added] };
 }
 
 export function removeAbility(t: Tracker, id: string): Tracker {
@@ -277,19 +291,32 @@ export function longRest(t: Tracker): Tracker {
   };
 }
 
-/** Pact Magic slots and "short rest" abilities come back; "1 on short rest" abilities regain a single use. */
+/** Pact Magic slots and "short rest" abilities come back; "some on short rest" ones regain a few uses; per-turn ones reset. */
 export function shortRest(t: Tracker): Tracker {
   return {
     ...t,
     pact: t.pact && rested(t.pact),
     abilities: t.abilities.map((a) =>
-      a.recharge === "short"
+      a.recharge === "short" || a.recharge === "turn"
         ? { ...a, used: 0 }
         : a.recharge === "shortOne"
-          ? { ...a, used: Math.max(0, a.used - 1) }
+          ? { ...a, used: Math.max(0, a.used - (a.regain ?? 1)) }
           : a,
     ),
   };
+}
+
+/** A new turn: abilities that come back "each turn" (once per turn effects, your Reaction) are ready again. */
+export function newTurn(t: Tracker): Tracker {
+  return { ...t, abilities: t.abilities.map((a) => (a.recharge === "turn" ? { ...a, used: 0 } : a)) };
+}
+
+export const hasTurnAbilities = (t: Tracker): boolean => t.abilities.some((a) => a.recharge === "turn");
+
+/** Proficiency bonus from the levels set up on the Slots tab, or null if no class has been set. */
+export function proficiencyBonusFor(classes: ClassEntry[]): number | null {
+  const level = classes.reduce((sum, c) => sum + c.level, 0);
+  return level < 1 ? null : 2 + Math.floor((Math.min(level, 20) - 1) / 4);
 }
 
 // --- casting ---------------------------------------------------------------------------------
