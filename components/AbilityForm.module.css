@@ -1,0 +1,17 @@
+.form { display: grid; gap: 0.9rem; padding: 1rem; border: 1px solid var(--accent); border-radius: 10px; background: var(--surface); }
+.title { margin: 0; font-size: 1.15rem; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 0.9rem; align-items: start; }
+.field { display: grid; gap: 0.25rem; align-content: start; min-width: 0; }
+.field > label { font-weight: bold; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: 0.55rem 0.7rem; font: inherit; font-size: 1rem; /* >=16px avoids iOS zoom */
+  border: 2px solid var(--accent); border-radius: 8px; background: var(--field); color: var(--text);
+}
+.field textarea { resize: vertical; }
+.field [aria-invalid="true"] { border-color: var(--danger); }
+.hint { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.error { margin: 0; font-size: 0.9rem; font-weight: bold; color: var(--danger); }
+.link { padding: 0; font: inherit; font-size: 0.85rem; color: var(--focus); text-decoration: underline; border: 0; background: none; cursor: pointer; }
+.check { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; cursor: pointer; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+@media (max-width: 40rem) { .actions .btn { flex: 1; min-height: 2.75rem; } }

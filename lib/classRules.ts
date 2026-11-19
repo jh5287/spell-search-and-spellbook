@@ -4,17 +4,29 @@
  * disagreed with the book (Wizard prepared spells, Druid cantrips) the book wins.
  */
 
-/** short: all back on a short or long rest · shortOne: one back on a short rest, all on a long rest */
-export type Recharge = "short" | "shortOne" | "long" | "manual";
+/**
+ * short: all back on a short or long rest · shortOne: some back on a short rest (one, unless the ability says otherwise),
+ * all on a long rest · long: long rest only · turn: back at the start of your next turn · manual: only when you say so
+ */
+export type Recharge = "short" | "shortOne" | "long" | "turn" | "manual";
 export type ModName = "wis" | "cha";
 export type Mods = Record<ModName, number>;
 
 export const RECHARGE_LABELS: Record<Recharge, string> = {
-  short: "Short or long rest",
-  shortOne: "1 on short rest, all on long rest",
   long: "Long rest",
+  short: "Short or long rest",
+  shortOne: "Some on short rest, all on long rest",
+  turn: "Each turn",
   manual: "Manual only",
 };
+
+/** The order they're offered in. */
+export const RECHARGE_ORDER: Recharge[] = ["long", "short", "shortOne", "turn", "manual"];
+
+/** What to show next to an ability: "Regain 2 on short rest, all on long rest", "Each turn", … */
+export function rechargeText(recharge: Recharge, regain = 1): string {
+  return recharge === "shortOne" ? `${regain} on short rest, all on long rest` : RECHARGE_LABELS[recharge];
+}
 
 export interface Feature {
   name: string;

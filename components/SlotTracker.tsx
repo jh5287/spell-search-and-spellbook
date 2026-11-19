@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { RECHARGE_LABELS, type ClassEntry, type Mods, type Recharge } from "@/lib/classRules";
+import { rechargeText, type ClassEntry, type Mods } from "@/lib/classRules";
 import { slotTracker } from "@/lib/characters";
 import { useLocalStore } from "@/lib/localStore";
 import {
   MAX_COUNT,
-  MAX_NAME,
   addAbility,
   addSlotLevel,
   applyClasses,
   hasTracker,
+  hasTurnAbilities,
+  isCustomId,
   longRest,
+  newTurn,
+  proficiencyBonusFor,
   removeAbility,
   removeSlotLevel,
   setPact,
@@ -20,9 +23,11 @@ import {
   shortRest,
   updateAbility,
   updatePact,
+  type Ability,
   type Cast,
 } from "@/lib/slots";
 import { ordinal } from "@/lib/spells";
+import AbilityForm, { type AbilityValues } from "./AbilityForm";
 import ClassSetup from "./ClassSetup";
 import styles from "./SlotTracker.module.css";
 
@@ -113,15 +118,28 @@ function NumberBox({ label, value, min = 0, max = MAX_COUNT, onChange }: {
   );
 }
 
-function RechargeSelect({ label, value, onChange }: { label: string; value: Recharge; onChange: (r: Recharge) => void }) {
+/** One ability: its name and rules, a meter to spend and restore it, and (for your own) Edit and Remove. */
+function AbilityCard({ a, manageable, onUsed, onEdit, onRemove }: { a: Ability; manageable: boolean; onUsed: (used: number) => void; onEdit: () => void; onRemove: () => void }) {
   return (
-    <select value={value} aria-label={label} onChange={(e) => onChange(e.target.value as Recharge)}>
-      {(Object.keys(RECHARGE_LABELS) as Recharge[]).map((r) => (
-        <option key={r} value={r}>
-          {RECHARGE_LABELS[r]}
-        </option>
-      ))}
-    </select>
+    <li className={styles.item}>
+      <div className={styles.itemHead}>
+        <span className={styles.itemName}>{a.name}</span>
+        {a.source && <span className={styles.meta}>{a.source}</span>}
+      </div>
+      <p className={styles.meta}>{rechargeText(a.recharge, a.regain)}</p>
+      {a.note && <p className={styles.note}>{a.note}</p>}
+      <Meter label={a.name} max={a.max} used={a.used} counter={a.counter} onUsed={onUsed} />
+      {manageable && (
+        <div className={styles.manage}>
+          <button type="button" className="btn" aria-label={`Edit ${a.name}`} onClick={onEdit}>
+            Edit
+          </button>
+          <button type="button" className="btn" aria-label={`Remove ${a.name}`} onClick={onRemove}>
+            Remove
+          </button>
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -131,12 +149,15 @@ export default function SlotTracker() {
   const [tracker, setTracker] = useLocalStore(slotTracker);
   const [customizing, setCustomizing] = useState(false);
   const [status, setStatus] = useState("");
-  const [draft, setDraft] = useState({ name: "", max: 1, recharge: "long" as Recharge, counter: false });
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const hasContent = hasTracker(tracker);
   const missingLevels = SPELL_LEVELS.filter((l) => !tracker.slots.some((s) => s.level === l));
   const showSlots = tracker.slots.length > 0 || tracker.pact !== null || customizing;
-  const showAbilities = tracker.abilities.length > 0 || customizing;
+  const classAbilities = tracker.abilities.filter((a) => !isCustomId(a.id));
+  const ownAbilities = tracker.abilities.filter((a) => isCustomId(a.id));
+  const pb = proficiencyBonusFor(tracker.classes);
 
   function apply(classes: ClassEntry[], mods: Mods) {
     if (
@@ -151,10 +172,51 @@ export default function SlotTracker() {
     setStatus("Slots and abilities updated.");
   }
 
-  function addCustom() {
-    if (!draft.name.trim()) return;
-    setTracker((prev) => addAbility(prev, { name: draft.name, max: draft.max, recharge: draft.recharge, counter: draft.counter }));
-    setDraft((d) => ({ ...d, name: "", max: 1 }));
+  function toPatch(v: AbilityValues) {
+    return { name: v.name, source: v.source, note: v.note, max: v.max, recharge: v.recharge, counter: v.counter, regain: v.recharge === "shortOne" && v.regain > 1 ? v.regain : undefined };
+  }
+
+  function saveNew(v: AbilityValues) {
+    setTracker((prev) => addAbility(prev, toPatch(v)));
+    setAdding(false);
+    setStatus(`Added ${v.name}.`);
+  }
+
+  function saveEdit(id: string, v: AbilityValues) {
+    setTracker((prev) => updateAbility(prev, id, toPatch(v)));
+    setEditingId(null);
+    setStatus(`Saved ${v.name}.`);
+  }
+
+  function removeOne(a: Ability) {
+    if (!window.confirm(`Remove ${a.name}?`)) return;
+    setTracker((prev) => removeAbility(prev, a.id));
+    if (editingId === a.id) setEditingId(null);
+    setStatus(`Removed ${a.name}.`);
+  }
+
+  /** An ability's card, or its edit form in its place. */
+  function renderAbility(a: Ability) {
+    if (editingId === a.id) {
+      return (
+        <li key={a.id} className={styles.editing}>
+          <AbilityForm initial={a} proficiencyBonus={pb} onSave={(v) => saveEdit(a.id, v)} onCancel={() => setEditingId(null)} />
+        </li>
+      );
+    }
+    return (
+      <AbilityCard
+        key={a.id}
+        a={a}
+        manageable={isCustomId(a.id) || customizing}
+        onUsed={(u) => setTracker((t) => updateAbility(t, a.id, { used: u }))}
+        onEdit={() => {
+          setEditingId(a.id);
+          setAdding(false);
+        }}
+        onRemove={() => removeOne(a)}
+      />
+    );
   }
 
   return (
@@ -162,6 +224,17 @@ export default function SlotTracker() {
       <ClassSetup key={JSON.stringify([tracker.classes, tracker.mods])} tracker={tracker} onApply={apply} />
 
       <div className={styles.toolbar}>
+        {hasTurnAbilities(tracker) && (
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              setTracker(newTurn);
+              setStatus("New turn: your once-per-turn abilities and Reaction are ready.");
+            }}
+          >
+            New turn
+          </button>
+        )}
         <button
           className="btn"
           disabled={!hasContent}
@@ -191,7 +264,7 @@ export default function SlotTracker() {
       </p>
 
       {!hasContent && !customizing && (
-        <p>Nothing is tracked yet. Set up your character above, or use Customize to add slots and abilities yourself.</p>
+        <p>Nothing is tracked yet. Set up your character above, or add your own abilities below.</p>
       )}
       {customizing && (
         <p className={styles.hint}>
@@ -288,89 +361,46 @@ export default function SlotTracker() {
         </section>
       )}
 
-      {showAbilities && (
-        <section className={styles.section} aria-labelledby="abilities-heading">
+      <section className={styles.section} aria-labelledby="abilities-heading">
+        <div className={styles.sectionHead}>
           <h2 id="abilities-heading" className={styles.heading}>
             Abilities
           </h2>
-          <ul className={styles.list}>
-            {tracker.abilities.map((a) => (
-              <li key={a.id} className={styles.item}>
-                <div className={styles.itemHead}>
-                  <span className={styles.itemName}>{a.name}</span>
-                  {a.source && <span className={styles.meta}>{a.source}</span>}
-                </div>
-                <p className={styles.meta}>{RECHARGE_LABELS[a.recharge]}</p>
-                {a.note && <p className={styles.note}>{a.note}</p>}
-                <Meter label={a.name} max={a.max} used={a.used} counter={a.counter} onUsed={(u) => setTracker((t) => updateAbility(t, a.id, { used: u }))} />
-                {customizing && (
-                  <div className={styles.edit}>
-                    <input
-                      type="text"
-                      className={styles.nameInput}
-                      value={a.name}
-                      maxLength={MAX_NAME}
-                      aria-label={`Name of ${a.name}`}
-                      onChange={(e) => setTracker((t) => updateAbility(t, a.id, { name: e.target.value }))}
-                    />
-                    <label>
-                      Uses
-                      <NumberBox label={`${a.name} total uses`} value={a.max} onChange={(n) => setTracker((t) => updateAbility(t, a.id, { max: n }))} />
-                    </label>
-                    <RechargeSelect label={`${a.name} recharge`} value={a.recharge} onChange={(r) => setTracker((t) => updateAbility(t, a.id, { recharge: r }))} />
-                    <label className={styles.check}>
-                      <input
-                        type="checkbox"
-                        checked={!!a.counter}
-                        onChange={(e) => setTracker((t) => updateAbility(t, a.id, { counter: e.target.checked }))}
-                      />
-                      Number box
-                    </label>
-                    <button className="btn" aria-label={`Remove ${a.name}`} onClick={() => setTracker((t) => removeAbility(t, a.id))}>
-                      Remove
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={adding}
+            onClick={() => {
+              setAdding(true);
+              setEditingId(null);
+            }}
+          >
+            + Add ability
+          </button>
+        </div>
 
-          {customizing && (
-            <form
-              className={styles.addForm}
-              onSubmit={(e) => {
-                e.preventDefault();
-                addCustom();
-              }}
-            >
-              <h3 className={styles.subheading}>Add your own</h3>
-              <div className={styles.edit}>
-                <input
-                  type="text"
-                  className={styles.nameInput}
-                  placeholder="Ability name, e.g. Bardic Inspiration"
-                  maxLength={MAX_NAME}
-                  value={draft.name}
-                  aria-label="New ability name"
-                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                />
-                <label>
-                  Uses
-                  <NumberBox label="New ability total uses" value={draft.max} onChange={(n) => setDraft((d) => ({ ...d, max: n }))} />
-                </label>
-                <RechargeSelect label="New ability recharge" value={draft.recharge} onChange={(r) => setDraft((d) => ({ ...d, recharge: r }))} />
-                <label className={styles.check}>
-                  <input type="checkbox" checked={draft.counter} onChange={(e) => setDraft((d) => ({ ...d, counter: e.target.checked }))} />
-                  Number box
-                </label>
-                <button type="submit" className="btn btn-primary" disabled={!draft.name.trim() || draft.max < 1}>
-                  Add
-                </button>
-              </div>
-            </form>
-          )}
-        </section>
-      )}
+        {adding && (
+          <div className={styles.formWrap}>
+            <AbilityForm proficiencyBonus={pb} onSave={saveNew} onCancel={() => setAdding(false)} />
+          </div>
+        )}
+
+        {classAbilities.length > 0 && <ul className={styles.list}>{classAbilities.map(renderAbility)}</ul>}
+
+        {ownAbilities.length > 0 && (
+          <>
+            <h3 className={styles.subheading}>Your own abilities</h3>
+            <ul className={styles.list}>{ownAbilities.map(renderAbility)}</ul>
+          </>
+        )}
+
+        {tracker.abilities.length === 0 && !adding && (
+          <p className={styles.hint}>
+            Class abilities appear when you set up your character above. For a homebrew class, an older edition, a feat or an item,
+            add your own: anything with a limited number of uses.
+          </p>
+        )}
+      </section>
     </div>
   );
 }
