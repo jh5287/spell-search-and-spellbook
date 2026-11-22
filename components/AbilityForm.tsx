@@ -15,11 +15,14 @@ export interface AbilityValues {
   regain: number;
   counter: boolean;
   note: string;
+  kind?: "feat";
 }
 
 interface Props {
   /** The ability being edited; leave out to add a new one. */
   initial?: Ability;
+  /** Adding a feat of your own: the feat's name takes the place of the source. */
+  kind?: "feat";
   /** From the levels on the Slots tab, to help fill in "uses equal your proficiency bonus". */
   proficiencyBonus: number | null;
   onSave: (values: AbilityValues) => void;
@@ -58,9 +61,10 @@ function wholeNumber(text: string, min: number): number | null {
 }
 
 /** One form to add or edit an ability: what it's called, where it comes from, how many uses, and when they come back. */
-export default function AbilityForm({ initial, proficiencyBonus, onSave, onCancel }: Props) {
+export default function AbilityForm({ initial, kind, proficiencyBonus, onSave, onCancel }: Props) {
+  const isFeat = (initial?.kind ?? kind) === "feat";
   const [draft, setDraft] = useState<Draft>(() => draftOf(initial));
-  const [errors, setErrors] = useState<{ name?: string; uses?: string; regain?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; source?: string; uses?: string; regain?: string }>({});
   const id = useId();
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
 
@@ -86,12 +90,22 @@ export default function AbilityForm({ initial, proficiencyBonus, onSave, onCance
     const regain = draft.recharge === "shortOne" ? wholeNumber(draft.regain, 1) : 1;
     const next = {
       name: name ? undefined : "Give it a name.",
+      source: isFeat && !draft.source.trim() ? "Give the feat a name." : undefined,
       uses: max === null ? `Uses must be a whole number from 1 to ${MAX_COUNT}.` : undefined,
       regain: regain === null ? `Enter a whole number from 1 to ${MAX_COUNT}.` : undefined,
     };
     setErrors(next);
-    if (next.name || next.uses || next.regain || max === null || regain === null) return;
-    onSave({ name, source: draft.source.trim(), max, recharge: draft.recharge, regain, counter: draft.counter, note: draft.note.trim() });
+    if (next.name || next.source || next.uses || next.regain || max === null || regain === null) return;
+    onSave({
+      name,
+      source: draft.source.trim(),
+      max,
+      recharge: draft.recharge,
+      regain,
+      counter: draft.counter,
+      note: draft.note.trim(),
+      ...(isFeat ? { kind: "feat" as const } : {}),
+    });
   }
 
   function onKeyDown(e: KeyboardEvent) {
@@ -102,22 +116,18 @@ export default function AbilityForm({ initial, proficiencyBonus, onSave, onCance
   }
 
   return (
-    <form className={styles.form} onSubmit={submit} onKeyDown={onKeyDown} noValidate aria-label={initial ? `Edit ${initial.name}` : "Add an ability"}>
-      <h3 className={styles.title}>{initial ? `Edit ${initial.name}` : "Add an ability"}</h3>
+    <form className={styles.form} onSubmit={submit} onKeyDown={onKeyDown} noValidate aria-label={initial ? `Edit ${initial.name}` : isFeat ? "Add a feat" : "Add an ability"}>
+      <h3 className={styles.title}>{initial ? `Edit ${initial.name}` : isFeat ? "Add a feat of your own" : "Add an ability"}</h3>
 
-      {!initial && (
+      {!initial && !isFeat && (
         <label className={styles.field}>
           Start from a template (optional)
           <select value="" onChange={(e) => applyTemplate(e.target.value)}>
             <option value="">Choose one to fill this in…</option>
-            {(["Patterns", "Feats"] as const).map((group) => (
-              <optgroup key={group} label={group === "Feats" ? "Feats (2024 Player's Handbook)" : "Common patterns"}>
-                {ABILITY_TEMPLATES.filter((t) => t.group === group).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
-                  </option>
-                ))}
-              </optgroup>
+            {ABILITY_TEMPLATES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
             ))}
           </select>
         </label>
@@ -143,14 +153,21 @@ export default function AbilityForm({ initial, proficiencyBonus, onSave, onCance
           )}
         </div>
         <div className={styles.field}>
-          <label htmlFor={`${id}-source`}>Where it comes from (optional)</label>
+          <label htmlFor={`${id}-source`}>{isFeat ? "Feat" : "Where it comes from (optional)"}</label>
           <input
             id={`${id}-source`}
             value={draft.source}
             maxLength={MAX_SOURCE}
-            placeholder="A class, feat, item or homebrew source"
+            placeholder={isFeat ? "e.g. Lucky, Sentinel, or a feat of your own" : "A class, feat, item or homebrew source"}
+            aria-invalid={!!errors.source}
+            aria-describedby={errors.source ? `${id}-source-error` : undefined}
             onChange={(e) => set({ source: e.target.value })}
           />
+          {errors.source && (
+            <p id={`${id}-source-error`} role="alert" className={styles.error}>
+              {errors.source}
+            </p>
+          )}
         </div>
       </div>
 

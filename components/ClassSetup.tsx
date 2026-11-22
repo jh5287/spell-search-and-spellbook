@@ -6,6 +6,7 @@ import {
   CLASS_BY_ID,
   castingSummary,
   clampLevel,
+  modValue,
   neededMods,
   planSlots,
   type ClassEntry,
@@ -24,7 +25,7 @@ interface Row {
   level: number;
 }
 
-const MOD_LABELS: Record<ModName, string> = { wis: "Wisdom modifier", cha: "Charisma modifier" };
+const MOD_LABELS: Record<ModName, string> = { wis: "Wisdom modifier", cha: "Charisma modifier", int: "Intelligence modifier" };
 
 function toEntries(rows: Row[]): ClassEntry[] {
   return rows.flatMap((r) =>
@@ -101,6 +102,7 @@ export default function ClassSetup({ tracker, onApply }: Props) {
                   {CLASSES.filter((c) => !taken.has(c.id)).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
+                      {c.source ? ` (${c.source})` : ""}
                     </option>
                   ))}
                 </select>
@@ -166,7 +168,7 @@ export default function ClassSetup({ tracker, onApply }: Props) {
                   inputMode="numeric"
                   min={-5}
                   max={10}
-                  value={Number.isNaN(mods[m]) ? "" : mods[m]}
+                  value={Number.isNaN(modValue(mods, m)) ? "" : modValue(mods, m)}
                   onChange={(e) => setMods((prev) => ({ ...prev, [m]: e.target.value === "" ? NaN : Number(e.target.value) }))}
                 />
               </label>
@@ -195,7 +197,11 @@ export default function ClassSetup({ tracker, onApply }: Props) {
                 <strong>
                   {c.className} {c.level}:
                 </strong>{" "}
-                {[c.cantrips !== undefined && `${c.cantrips} cantrips`, c.prepared !== undefined && `${c.prepared} prepared spells`]
+                {[
+                  c.cantrips !== undefined && `${c.cantrips} cantrips`,
+                  c.prepared !== undefined && `${c.prepared} prepared spells`,
+                  c.extra,
+                ]
                   .filter(Boolean)
                   .join(", ")}
               </p>
@@ -208,7 +214,7 @@ export default function ClassSetup({ tracker, onApply }: Props) {
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={!!problem || modsNeeded.some((m) => Number.isNaN(mods[m]))}
+            disabled={!!problem || modsNeeded.some((m) => Number.isNaN(modValue(mods, m)))}
           >
             {configured ? "Update slots & abilities" : "Set up slots & abilities"}
           </button>

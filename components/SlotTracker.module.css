@@ -73,3 +73,5 @@
 .editing { grid-column: 1 / -1; }
 .manage { display: flex; flex-wrap: wrap; gap: 0.4rem; padding-top: 0.5rem; border-top: 1px solid var(--divider); }
 .section .subheading { margin-top: 1rem; }
+.featGroup { margin-top: 0.75rem; }
+.featGroup .subheading { margin-top: 0; }

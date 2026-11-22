@@ -9,8 +9,16 @@
  * all on a long rest · long: long rest only · turn: back at the start of your next turn · manual: only when you say so
  */
 export type Recharge = "short" | "shortOne" | "long" | "turn" | "manual";
-export type ModName = "wis" | "cha";
-export type Mods = Record<ModName, number>;
+export type ModName = "wis" | "cha" | "int";
+export interface Mods {
+  wis: number;
+  cha: number;
+  /** Added with the Artificer; characters saved before that don't have one yet. */
+  int?: number;
+}
+
+export const DEFAULT_MOD = 3;
+export const modValue = (mods: Mods, name: ModName): number => mods[name] ?? DEFAULT_MOD;
 
 export const RECHARGE_LABELS: Record<Recharge, string> = {
   long: "Long rest",
@@ -51,6 +59,7 @@ export interface SubclassRules {
 }
 
 export type ClassId =
+  | "artificer"
   | "barbarian"
   | "bard"
   | "cleric"
@@ -69,6 +78,10 @@ export type CasterKind = "full" | "half" | "third" | "pact";
 export interface ClassRules {
   id: ClassId;
   name: string;
+  /** Set for classes from outside the free core rules, so people know where to look it up. */
+  source?: string;
+  /** Extra table columns worth showing in the setup summary, such as Artificer plans known. */
+  extras?: (level: number) => string | null;
   caster?: Exclude<CasterKind, "third">;
   cantrips?: (level: number) => number;
   prepared?: (level: number) => number;
@@ -83,7 +96,7 @@ const steps =
     table.reduce((value, [from, v]) => (level >= from ? v : value), 0);
 
 const fixed = (n: number) => () => n;
-const byMod = (mod: ModName) => (_level: number, mods: Mods) => Math.max(1, mods[mod]);
+const byMod = (mod: ModName) => (_level: number, mods: Mods) => Math.max(1, modValue(mods, mod));
 
 const once = (name: string, recharge: Recharge, from: number, note?: string): Feature => ({
   name,
@@ -114,10 +127,107 @@ const PREPARED_WARLOCK = byTable([2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12
 const PREPARED_THIRD = (level: number) =>
   [3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13][level - 3] ?? 0;
 
+// Artificer (Eberron: Forge of the Artificer), levels 1–20. Spell slots follow the half-caster table.
+const ARTIFICER_PLANS = byTable([0, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8]);
+const ARTIFICER_ITEMS = byTable([0, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6]);
+
 const CANTRIPS_3 = steps([1, 3], [4, 4], [10, 5]);
 const CANTRIPS_2 = steps([1, 2], [4, 3], [10, 4]);
 
 export const CLASSES: ClassRules[] = [
+  {
+    id: "artificer",
+    name: "Artificer",
+    source: "Eberron",
+    caster: "half",
+    cantrips: steps([1, 2], [10, 3], [14, 4]),
+    prepared: PREPARED_HALF,
+    extras: (level) =>
+      level >= 2 ? `${ARTIFICER_PLANS(level)} magic item plans known, up to ${ARTIFICER_ITEMS(level)} items at once` : null,
+    features: [
+      modUses("Tinker's Magic", "int", 1, { note: "Magic action: make a simple item (a rope, lamp, caltrops…) that lasts until your next long rest." }),
+      modUses("Flash of Genius", "int", 7, { to: 13, note: "Reaction: add your Intelligence modifier to a failed ability check or save within 30 feet." }),
+      modUses("Flash of Genius", "int", 14, {
+        to: 19,
+        recharge: "shortOne",
+        note: "Reaction: add your Intelligence modifier to a failed check or save within 30 feet. Refreshed Genius: a short rest gives back one use.",
+      }),
+      modUses("Flash of Genius", "int", 20, {
+        recharge: "short",
+        note: "Reaction: add your Intelligence modifier to a failed check or save within 30 feet. Magical Guidance: a short rest gives back all uses if you're attuned to at least one magic item.",
+      }),
+      once("Drain Magic Item", "long", 6, "Bonus Action: turn an item you made into a spell slot (level 1 for Common, level 2 for Uncommon or Rare). The slot fades at your next long rest."),
+      once("Transmute Magic Item", "long", 6, "Magic action: turn an item you made into a different one from your plans."),
+      {
+        name: "Spell-Storing Item",
+        from: 11,
+        uses: (_level, mods) => Math.max(2, 2 * modValue(mods, "int")),
+        mod: "int",
+        recharge: "long",
+        note: "Uses left in the spell you stored in an item: twice your Intelligence modifier (minimum 2).",
+      },
+    ],
+    subclasses: [
+      {
+        id: "alchemist",
+        name: "Alchemist",
+        features: [
+          {
+            name: "Experimental Elixirs",
+            from: 3,
+            uses: steps([3, 2], [5, 3], [9, 4], [15, 5]),
+            recharge: "long",
+            note: "Elixirs made at the end of a long rest. Spend a spell slot to make another.",
+          },
+          modUses("Restorative Reagents", "int", 9, { note: "Cast Lesser Restoration without a spell slot." }),
+          once("Conjured Cauldron", "long", 15, "Cast Tasha's Bubbling Cauldron without a spell slot or components."),
+        ],
+      },
+      {
+        id: "armorer",
+        name: "Armorer",
+        features: [
+          modUses("Giant Stature (Dreadnaught armor)", "int", 3, { note: "Bonus Action: grow larger and gain reach for 1 minute." }),
+          modUses("Reaction pull (Guardian armor)", "int", 15, { note: "Pull a creature that ends its turn within 30 feet toward you." }),
+          modUses("Flight burst (Infiltrator armor)", "int", 15, { note: "Bonus Action: gain a Fly Speed of twice your Speed until the end of the turn." }),
+        ],
+      },
+      {
+        id: "artillerist",
+        name: "Artillerist",
+        features: [once("Eldritch Cannon", "long", 3, "Create a cannon once per long rest, or spend a spell slot to create another.")],
+      },
+      {
+        id: "battle-smith",
+        name: "Battle Smith",
+        features: [modUses("Arcane Jolt", "int", 9, { note: "Extra 2d6 force damage or 2d6 healing on a magic weapon or Steel Defender hit, once per turn." })],
+      },
+      {
+        id: "cartographer",
+        name: "Cartographer",
+        features: [
+          modUses("Illuminated Cartography", "int", 3, { note: "Cast Faerie Fire without a spell slot." }),
+          once("Unerring Path", "long", 15, "Cast Find the Path without a spell slot, components or preparing it."),
+        ],
+      },
+      {
+        id: "reanimator",
+        name: "Reanimator",
+        features: [
+          {
+            name: "Jolt to Life",
+            from: 3,
+            uses: (_level, mods) => modValue(mods, "int"),
+            mod: "int",
+            recharge: "long",
+            note: "Modify Spare the Dying to revive the target with a jolt of lightning.",
+          },
+          once("Reanimated Companion", "long", 3, "Create your companion once per long rest, or spend a spell slot to create another."),
+          once("Facilitated Revival", "long", 15, "Cast Raise Dead without a spell slot or components."),
+        ],
+      },
+    ],
+  },
   {
     id: "barbarian",
     name: "Barbarian",
@@ -735,6 +845,8 @@ export interface CastingSummary {
   level: number;
   cantrips?: number;
   prepared?: number;
+  /** Class-specific table columns, e.g. Artificer plans known. */
+  extra?: string;
 }
 
 /** Cantrips and prepared spells for each spellcasting class, for the setup summary. */
@@ -742,7 +854,15 @@ export function castingSummary(entries: ClassEntry[]): CastingSummary[] {
   return entries.flatMap((e): CastingSummary[] => {
     const cls = CLASS_BY_ID[e.classId];
     if (cls.caster) {
-      return [{ className: cls.name, level: e.level, cantrips: cls.cantrips?.(e.level), prepared: cls.prepared?.(e.level) }];
+      return [
+        {
+          className: cls.name,
+          level: e.level,
+          cantrips: cls.cantrips?.(e.level),
+          prepared: cls.prepared?.(e.level),
+          extra: cls.extras?.(e.level) ?? undefined,
+        },
+      ];
     }
     if (casterKind(e) === "third") {
       return [{ className: `${cls.name} (${subclassOf(e)?.name})`, level: e.level, prepared: PREPARED_THIRD(e.level) }];

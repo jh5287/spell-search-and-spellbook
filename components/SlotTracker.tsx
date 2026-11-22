@@ -7,9 +7,11 @@ import { useLocalStore } from "@/lib/localStore";
 import {
   MAX_COUNT,
   addAbility,
+  addFeat,
   addSlotLevel,
   applyClasses,
   hasTracker,
+  featNameOf,
   hasTurnAbilities,
   isCustomId,
   longRest,
@@ -27,8 +29,10 @@ import {
   type Cast,
 } from "@/lib/slots";
 import { ordinal } from "@/lib/spells";
+import type { FeatTemplate } from "@/lib/abilityTemplates";
 import AbilityForm, { type AbilityValues } from "./AbilityForm";
 import ClassSetup from "./ClassSetup";
+import FeatPicker from "./FeatPicker";
 import styles from "./SlotTracker.module.css";
 
 interface MeterProps {
@@ -119,12 +123,12 @@ function NumberBox({ label, value, min = 0, max = MAX_COUNT, onChange }: {
 }
 
 /** One ability: its name and rules, a meter to spend and restore it, and (for your own) Edit and Remove. */
-function AbilityCard({ a, manageable, onUsed, onEdit, onRemove }: { a: Ability; manageable: boolean; onUsed: (used: number) => void; onEdit: () => void; onRemove: () => void }) {
+function AbilityCard({ a, manageable, hideSource, onUsed, onEdit, onRemove }: { a: Ability; manageable: boolean; hideSource?: boolean; onUsed: (used: number) => void; onEdit: () => void; onRemove: () => void }) {
   return (
     <li className={styles.item}>
       <div className={styles.itemHead}>
         <span className={styles.itemName}>{a.name}</span>
-        {a.source && <span className={styles.meta}>{a.source}</span>}
+        {a.source && !hideSource && <span className={styles.meta}>{a.source}</span>}
       </div>
       <p className={styles.meta}>{rechargeText(a.recharge, a.regain)}</p>
       {a.note && <p className={styles.note}>{a.note}</p>}
@@ -149,14 +153,20 @@ export default function SlotTracker() {
   const [tracker, setTracker] = useLocalStore(slotTracker);
   const [customizing, setCustomizing] = useState(false);
   const [status, setStatus] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [panel, setPanel] = useState<null | "ability" | "feat" | "feat-custom">(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const hasContent = hasTracker(tracker);
   const missingLevels = SPELL_LEVELS.filter((l) => !tracker.slots.some((s) => s.level === l));
   const showSlots = tracker.slots.length > 0 || tracker.pact !== null || customizing;
   const classAbilities = tracker.abilities.filter((a) => !isCustomId(a.id));
-  const ownAbilities = tracker.abilities.filter((a) => isCustomId(a.id));
+  const ownAbilities = tracker.abilities.filter((a) => isCustomId(a.id) && featNameOf(a) === null);
+  const featAbilities = tracker.abilities.filter((a) => isCustomId(a.id) && featNameOf(a) !== null);
+  // feats in the order they were added, each with its own trackers underneath
+  const featGroups = [...new Set(featAbilities.map((a) => featNameOf(a)!))].map((name) => ({
+    name,
+    abilities: featAbilities.filter((a) => featNameOf(a) === name),
+  }));
   const pb = proficiencyBonusFor(tracker.classes);
 
   function apply(classes: ClassEntry[], mods: Mods) {
@@ -173,12 +183,12 @@ export default function SlotTracker() {
   }
 
   function toPatch(v: AbilityValues) {
-    return { name: v.name, source: v.source, note: v.note, max: v.max, recharge: v.recharge, counter: v.counter, regain: v.recharge === "shortOne" && v.regain > 1 ? v.regain : undefined };
+    return { name: v.name, source: v.source, note: v.note, max: v.max, recharge: v.recharge, counter: v.counter, kind: v.kind, regain: v.recharge === "shortOne" && v.regain > 1 ? v.regain : undefined };
   }
 
   function saveNew(v: AbilityValues) {
     setTracker((prev) => addAbility(prev, toPatch(v)));
-    setAdding(false);
+    setPanel(null);
     setStatus(`Added ${v.name}.`);
   }
 
@@ -186,6 +196,11 @@ export default function SlotTracker() {
     setTracker((prev) => updateAbility(prev, id, toPatch(v)));
     setEditingId(null);
     setStatus(`Saved ${v.name}.`);
+  }
+
+  function pickFeat(feat: FeatTemplate) {
+    setTracker((prev) => addFeat(prev, feat, pb));
+    setStatus(`Added ${feat.name}.`);
   }
 
   function removeOne(a: Ability) {
@@ -196,7 +211,7 @@ export default function SlotTracker() {
   }
 
   /** An ability's card, or its edit form in its place. */
-  function renderAbility(a: Ability) {
+  function renderAbility(a: Ability, hideSource = false) {
     if (editingId === a.id) {
       return (
         <li key={a.id} className={styles.editing}>
@@ -208,11 +223,12 @@ export default function SlotTracker() {
       <AbilityCard
         key={a.id}
         a={a}
+        hideSource={hideSource}
         manageable={isCustomId(a.id) || customizing}
         onUsed={(u) => setTracker((t) => updateAbility(t, a.id, { used: u }))}
         onEdit={() => {
           setEditingId(a.id);
-          setAdding(false);
+          setPanel(null);
         }}
         onRemove={() => removeOne(a)}
       />
@@ -369,9 +385,9 @@ export default function SlotTracker() {
           <button
             type="button"
             className="btn btn-primary"
-            disabled={adding}
+            disabled={panel === "ability"}
             onClick={() => {
-              setAdding(true);
+              setPanel("ability");
               setEditingId(null);
             }}
           >
@@ -379,25 +395,69 @@ export default function SlotTracker() {
           </button>
         </div>
 
-        {adding && (
+        {panel === "ability" && (
           <div className={styles.formWrap}>
-            <AbilityForm proficiencyBonus={pb} onSave={saveNew} onCancel={() => setAdding(false)} />
+            <AbilityForm proficiencyBonus={pb} onSave={saveNew} onCancel={() => setPanel(null)} />
           </div>
         )}
 
-        {classAbilities.length > 0 && <ul className={styles.list}>{classAbilities.map(renderAbility)}</ul>}
+        {classAbilities.length > 0 && <ul className={styles.list}>{classAbilities.map((a) => renderAbility(a))}</ul>}
 
         {ownAbilities.length > 0 && (
           <>
             <h3 className={styles.subheading}>Your own abilities</h3>
-            <ul className={styles.list}>{ownAbilities.map(renderAbility)}</ul>
+            <ul className={styles.list}>{ownAbilities.map((a) => renderAbility(a))}</ul>
           </>
         )}
 
-        {tracker.abilities.length === 0 && !adding && (
+        {tracker.abilities.length === 0 && panel === null && (
           <p className={styles.hint}>
             Class abilities appear when you set up your character above. For a homebrew class, an older edition, a feat or an item,
             add your own: anything with a limited number of uses.
+          </p>
+        )}
+      </section>
+
+      <section className={styles.section} aria-labelledby="feats-heading">
+        <div className={styles.sectionHead}>
+          <h2 id="feats-heading" className={styles.heading}>
+            Feats
+          </h2>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={panel === "feat" || panel === "feat-custom"}
+            onClick={() => {
+              setPanel("feat");
+              setEditingId(null);
+            }}
+          >
+            + Add feat
+          </button>
+        </div>
+
+        {panel === "feat" && (
+          <div className={styles.formWrap}>
+            <FeatPicker tracker={tracker} proficiencyBonus={pb} onAdd={pickFeat} onCustom={() => setPanel("feat-custom")} onClose={() => setPanel(null)} />
+          </div>
+        )}
+        {panel === "feat-custom" && (
+          <div className={styles.formWrap}>
+            <AbilityForm kind="feat" proficiencyBonus={pb} onSave={saveNew} onCancel={() => setPanel("feat")} />
+          </div>
+        )}
+
+        {featGroups.map((group) => (
+          <div key={group.name} className={styles.featGroup}>
+            <h3 className={styles.subheading}>{group.name}</h3>
+            <ul className={styles.list}>{group.abilities.map((a) => renderAbility(a, true))}</ul>
+          </div>
+        ))}
+
+        {featGroups.length === 0 && panel !== "feat" && panel !== "feat-custom" && (
+          <p className={styles.hint}>
+            Track the uses and once-per-turn effects that feats give you, like Lucky or Savage Attacker. They refresh on short
+            and long rests, or with New turn, just like your class abilities.
           </p>
         )}
       </section>

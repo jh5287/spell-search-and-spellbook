@@ -9,6 +9,7 @@ import {
   type Mods,
   type Recharge,
 } from "./classRules";
+import type { FeatTemplate, FeatTracker } from "./abilityTemplates";
 import { ordinal, type Spell } from "./spells";
 
 /** A spell cast from a slot, kept on the slot so you can see where each one went. */
@@ -42,6 +43,8 @@ export interface Ability {
   note?: string;
   /** For "some on short rest": how many come back (1 if not set). */
   regain?: number;
+  /** "feat" abilities are shown in their own section, grouped under the feat named in `source`. */
+  kind?: "feat";
 }
 
 export interface Tracker {
@@ -58,7 +61,7 @@ export const MAX_COUNT = 999;
 export const MAX_NAME = 60;
 export const MAX_NOTE = 500;
 export const MAX_SOURCE = 100;
-export const DEFAULT_MODS: Mods = { wis: 3, cha: 3 };
+export const DEFAULT_MODS: Mods = { wis: 3, cha: 3, int: 3 };
 
 export const EMPTY_TRACKER: Tracker = { classes: [], mods: DEFAULT_MODS, slots: [], pact: null, abilities: [] };
 
@@ -110,7 +113,8 @@ function isAbility(v: unknown): v is Ability {
     RECHARGES.includes(a.recharge as Recharge) &&
     (a.counter === undefined || typeof a.counter === "boolean") &&
     (a.note === undefined || (typeof a.note === "string" && a.note.length <= MAX_NOTE)) &&
-    (a.regain === undefined || (isCount(a.regain) && a.regain >= 1))
+    (a.regain === undefined || (isCount(a.regain) && a.regain >= 1)) &&
+    (a.kind === undefined || a.kind === "feat")
   );
 }
 
@@ -139,6 +143,7 @@ export function isTracker(v: unknown): v is Tracker {
     t.mods !== null &&
     isMod(t.mods.wis) &&
     isMod(t.mods.cha) &&
+    (t.mods.int === undefined || isMod(t.mods.int)) &&
     Array.isArray(t.slots) &&
     t.slots.length <= 9 &&
     t.slots.every(isSlotRow) &&
@@ -183,7 +188,11 @@ export function newAbilityId(): string {
  * slot or ability still exists, and abilities the user added themselves are kept.
  */
 export function applyClasses(t: Tracker, classes: ClassEntry[], rawMods: Mods): Tracker {
-  const mods: Mods = { wis: cleanMod(rawMods.wis, DEFAULT_MODS.wis), cha: cleanMod(rawMods.cha, DEFAULT_MODS.cha) };
+  const mods: Mods = {
+    wis: cleanMod(rawMods.wis, DEFAULT_MODS.wis),
+    cha: cleanMod(rawMods.cha, DEFAULT_MODS.cha),
+    int: cleanMod(rawMods.int ?? NaN, DEFAULT_MODS.int!),
+  };
   const entries = classes.map((e) => ({
     ...e,
     level: clampLevel(e.level),
@@ -244,7 +253,7 @@ export function setPact(t: Tracker, pact: SlotRow | null): Tracker {
 /** Trims; empty becomes "not set" so it isn't saved as a blank string. */
 const cleanText = (text: string | undefined, max: number): string | undefined => text?.trim().slice(0, max) || undefined;
 
-type AbilityPatch = Partial<Pick<Ability, "name" | "source" | "note" | "max" | "used" | "recharge" | "counter" | "regain">>;
+type AbilityPatch = Partial<Pick<Ability, "name" | "source" | "note" | "max" | "used" | "recharge" | "counter" | "regain" | "kind">>;
 
 export function updateAbility(t: Tracker, id: string, patch: AbilityPatch): Tracker {
   return {
@@ -272,6 +281,7 @@ export function addAbility(t: Tracker, ability: Omit<Ability, "id" | "used">): T
     ...(cleanText(ability.source, MAX_SOURCE) ? { source: cleanText(ability.source, MAX_SOURCE) } : {}),
     ...(cleanText(ability.note, MAX_NOTE) ? { note: cleanText(ability.note, MAX_NOTE) } : {}),
     ...(ability.counter ? { counter: true } : {}),
+    ...(ability.kind === "feat" ? { kind: "feat" as const } : {}),
     ...(ability.recharge === "shortOne" && ability.regain && ability.regain > 1 ? { regain: Math.min(MAX_COUNT, Math.trunc(ability.regain)) } : {}),
   };
   return { ...t, abilities: [...t.abilities, added] };
@@ -312,6 +322,48 @@ export function newTurn(t: Tracker): Tracker {
 }
 
 export const hasTurnAbilities = (t: Tracker): boolean => t.abilities.some((a) => a.recharge === "turn");
+
+/**
+ * The feat an ability belongs to, or null if it isn't a feat. Abilities made from the first feat templates were saved
+ * as "Feat: Lucky" with no kind, so those count too.
+ */
+export function featNameOf(a: Ability): string | null {
+  if (a.kind === "feat") return a.source?.trim() || "Feat";
+  if (!isCustomId(a.id) || !a.source) return null;
+  const legacy = /^(Feat|Epic Boon):\s*(.+)$/i.exec(a.source.trim());
+  if (!legacy) return null;
+  return legacy[1].toLowerCase() === "feat" ? legacy[2] : `Boon of ${legacy[2]}`;
+}
+
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Is this feat's tracker already here? A shared one (your Reaction) counts once, whichever feat added it. */
+function hasFeatTracker(t: Tracker, feat: FeatTemplate, tr: FeatTracker): boolean {
+  return t.abilities.some((a) => (tr.shared ? sameName(a.name, tr.name) : featNameOf(a) === feat.name && sameName(a.name, tr.name)));
+}
+
+/** True when everything this feat would add is already being tracked. */
+export const hasFeat = (t: Tracker, feat: FeatTemplate): boolean => feat.trackers.every((tr) => hasFeatTracker(t, feat, tr));
+
+/** Adds the feat's trackers (a feat can have more than one), skipping any that are already there. */
+export function addFeat(t: Tracker, feat: FeatTemplate, proficiencyBonus: number | null): Tracker {
+  return feat.trackers.reduce(
+    (acc, tr) =>
+      hasFeatTracker(acc, feat, tr)
+        ? acc
+        : addAbility(acc, {
+            name: tr.name,
+            source: tr.group ?? feat.name,
+            kind: "feat",
+            note: tr.note,
+            max: tr.uses === "pb" ? (proficiencyBonus ?? 2) : tr.uses,
+            recharge: tr.recharge,
+            counter: tr.counter,
+            regain: tr.regain,
+          }),
+    t,
+  );
+}
 
 /** Proficiency bonus from the levels set up on the Slots tab, or null if no class has been set. */
 export function proficiencyBonusFor(classes: ClassEntry[]): number | null {
