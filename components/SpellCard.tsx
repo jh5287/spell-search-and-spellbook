@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { BookView } from "@/lib/spellbook";
 import { schoolVar } from "@/lib/schools";
+import { aliasesFor } from "@/lib/extraSpells";
 import { subtitle, type Spell } from "@/lib/spells";
 import styles from "./SpellCard.module.css";
 
@@ -40,6 +41,14 @@ function Details({ spell }: { spell: Spell }) {
       {spell.description.split("\n").map((p, i) => <p key={i}>{p.trim()}</p>)}
       {spell.higher_level && (
         <p><strong>Using a Higher-Level Spell Slot.</strong> {spell.higher_level}</p>
+      )}
+      {spell.summary && (
+        <p className={styles.sourceNote}>
+          A short summary of a spell from {spell.source}, not the book&apos;s wording. Check the book for the full rules.
+        </p>
+      )}
+      {aliasesFor(spell.index).length > 0 && (
+        <p className={styles.sourceNote}>Also known as {aliasesFor(spell.index).join(", ")}.</p>
       )}
     </>
   );

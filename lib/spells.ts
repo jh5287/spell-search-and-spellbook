@@ -1,3 +1,5 @@
+import { EXTRA_SUMMARIES, EXTRA_URL_PREFIX, aliasesFor, extraSpell } from "./extraSpells";
+
 const API = "https://www.dnd5eapi.co";
 
 export interface SpellSummary {
@@ -5,6 +7,8 @@ export interface SpellSummary {
   name: string;
   level: number;
   url: string;
+  /** Other names it goes by, e.g. the Player's Handbook name of a spell the SRD renamed. */
+  aliases?: string[];
 }
 
 export interface Spell {
@@ -26,18 +30,32 @@ export interface Spell {
   custom?: boolean;
   /** Set on custom entries that aren't spells (e.g. "Ability", "Item"); `level` is meaningless then. */
   kind?: string;
+  /** Where a spell outside the free SRD comes from. Set together with `summary`. */
+  source?: string;
+  /** The description is a short summary written for this app, not the book's wording. */
+  summary?: boolean;
   /** Present on the API's damaging spells (not all of them). Only its presence is used, to spot damage. */
   damage?: unknown;
 }
 
+/** The API's spells (with their Player's Handbook names as aliases) plus the 2024 spells the API doesn't have. */
 export async function fetchSpellList(signal?: AbortSignal): Promise<SpellSummary[]> {
   const res = await fetch(`${API}/api/2024/spells`, { signal });
   if (!res.ok) throw new Error("Could not load the spell list");
   const data = await res.json();
-  return data.results;
+  const fromApi: SpellSummary[] = data.results.map((s: SpellSummary) => {
+    const aliases = aliasesFor(s.index);
+    return aliases.length ? { ...s, aliases } : s;
+  });
+  return [...fromApi, ...EXTRA_SUMMARIES];
 }
 
 export async function fetchSpell(url: string, signal?: AbortSignal): Promise<Spell> {
+  if (url.startsWith(EXTRA_URL_PREFIX)) {
+    const spell = extraSpell(url.slice(EXTRA_URL_PREFIX.length));
+    if (!spell) throw new Error("Could not load that spell");
+    return spell;
+  }
   const res = await fetch(`${API}${url}`, { signal });
   if (!res.ok) throw new Error("Could not load that spell");
   return res.json();
@@ -87,15 +105,16 @@ function matchScore(q: string, name: string): number | null {
   return null;
 }
 
-/** Every spell that plausibly matches the typed text, best match first. */
+/** Every spell that plausibly matches the typed text, best match first. A spell matches on its name or any alias. */
 export function suggestSpells(query: string, spells: SpellSummary[]): SpellSummary[] {
   const q = normalize(query);
   if (!q) return [];
 
   return spells
     .flatMap((spell) => {
-      const score = matchScore(q, normalize(spell.name));
-      return score === null ? [] : [{ spell, score }];
+      const scores = [spell.name, ...(spell.aliases ?? [])].map((n) => matchScore(q, normalize(n)));
+      const best = Math.min(...scores.map((sc) => sc ?? Infinity));
+      return best === Infinity ? [] : [{ spell, score: best }];
     })
     .sort((a, b) => a.score - b.score || a.spell.name.localeCompare(b.spell.name))
     .map((m) => m.spell);

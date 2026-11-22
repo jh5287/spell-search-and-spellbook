@@ -157,7 +157,7 @@ export default function SpellSearch({ savedIds, onAdd }: Props) {
           <ul id={listId} role="listbox" aria-label="Matching spells" className={styles.list}>
             {visible.map((s, i) => (
               <li
-                key={s.index}
+                key={s.url}
                 id={optionId(i)}
                 role="option"
                 aria-selected={i === index}
@@ -171,6 +171,7 @@ export default function SpellSearch({ savedIds, onAdd }: Props) {
                 <span className={styles.optionName}>{s.name}</span>
                 <span className={styles.optionMeta}>
                   {levelText(s.level)}
+                  {s.aliases && ` · also ${s.aliases.join(", ")}`}
                   {savedIds.has(s.index) && " · ✓ In book"}
                 </span>
               </li>

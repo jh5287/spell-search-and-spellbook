@@ -1,3 +1,4 @@
+import { EXTRA_EFFECT_CODES } from "./extraSpells";
 import { SPELL_EFFECT_CODES } from "./spellTags";
 import type { Spell } from "./spells";
 
@@ -89,9 +90,12 @@ function inferEffects(spell: Spell): EffectKind[] {
 
 /** The spell's effects: looked up for official spells, worked out from the text for custom ones. */
 export function spellEffects(spell: Spell): EffectKind[] {
-  if (!spell.custom && Object.hasOwn(SPELL_EFFECT_CODES, spell.index)) {
-    return [...SPELL_EFFECT_CODES[spell.index]].map((c) => CODE_EFFECT[c]);
-  }
+  const known = spell.custom
+    ? undefined
+    : Object.hasOwn(SPELL_EFFECT_CODES, spell.index)
+      ? SPELL_EFFECT_CODES[spell.index]
+      : EXTRA_EFFECT_CODES.get(spell.index);
+  if (known !== undefined) return [...known].map((c) => CODE_EFFECT[c]);
   return inferEffects(spell);
 }
 
